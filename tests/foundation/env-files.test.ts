@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const root = path.resolve(__dirname, "..", "..");
+const root = path.resolve(import.meta.dirname, "../..");
 
 function readEnvExampleLines(): string[] {
   return readFileSync(path.join(root, ".env.example"), "utf8")
@@ -60,5 +60,17 @@ describe("環境変数ファイル（AC-32a）", () => {
 
   it("AC-32a: .env.example は Git 管理外ではない", () => {
     expect(checkIgnoreExitCode(".env.example")).toBe(1);
+  });
+
+  it("AC-32a: Git が追跡している .env* ファイルは .env.example だけである", () => {
+    // check-ignore はパターンしか見ないので、誤ってコミット済みのファイルはここで検出する（中身は読まない）
+    const tracked = execFileSync("git", ["ls-files", "--", ".env*"], {
+      cwd: root,
+      encoding: "utf8",
+    })
+      .split(/\r?\n/)
+      .filter((line) => line !== "");
+
+    expect(tracked).toEqual([".env.example"]);
   });
 });

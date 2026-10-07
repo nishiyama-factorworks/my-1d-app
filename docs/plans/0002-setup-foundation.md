@@ -1,6 +1,6 @@
 # 0002: プロジェクト基盤 実装計画
 
-Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #2
 - 対応する仕様: docs/specs/0002-setup-foundation.md
@@ -105,7 +105,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
   - 注意: **CLAUDE.md は保護ファイルで、編集時に確認（承認画面）が出る。** 承認されなければ編集せず、差分案を人間に提示して止める。200 行以内を保つ。
   - 完了条件: 6節に `src/` の記述が残っていない。行数が 200 以内。
 
-- [ ] **T8: クリーン状態からの品質ゲート確認と harness-doctor の実行**
+- [x] **T8: クリーン状態からの品質ゲート確認と harness-doctor の実行**
   - 対応 AC: AC-21a、AC-32b
   - 先に書くテスト: なし（コマンド実行で確認する AC）
   - 手順:
@@ -191,3 +191,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
 - 2026-10-07: 人間が推奨どおりで承認（Status: in-progress）。決定事項: shadcn/ui は選択肢 A（`clsx` `tailwind-merge` のみ・手動初期化。ただし `pnpm add` 実行前に T5 で改めて承認を取る）／`SRC_REGEX` に `features` を本タスクで追加（T9）／`typecheck` 失敗時は `next typegen && tsc --noEmit` に変更／ブランチ名は `feat/0002-setup-foundation` のまま／ディレクトリ構成の独立 ADR は作らない／P1・P3 を採用（P2・P4・P5 は別 Issue）／`/issue split` はせず 1 PR で進める。
 - 2026-10-07: T5 人間承認のうえ追加: clsx 2.1.1 / tailwind-merge 3.7.0（`pnpm add` 経由）。
 - 2026-10-07: T6 完了。components.json は style=new-york / baseColor=neutral（公式ドキュメントでは初期化後に変更不可とされる。最初のコンポーネント追加前なら変更可）。iconLibrary は lucide-react 承認時に追加。
+- 2026-10-07: RED 確認の記録。T1: 見出し文言の不一致（雛形の h1 と「GitHub リポジトリ検索」）で 1 件失敗。T3: 4 件失敗（`GITHUB_TOKEN` 無し、コメント内の他キー例、`.env.development` / `.env.production` が管理対象）。T6: 空実装 `cn` で 3 件が期待値不一致により失敗。
+- 2026-10-07: T2 の検出力確認。`strict` を false にすると strict のテストだけ、`scripts.test` を `vitest` にすると該当テストだけが失敗。どちらも復元済み。
+- 2026-10-07: T8 結果。クリーン clone で最初は `pnpm typecheck` が失敗（`LayoutProps` 未定義）。`typecheck` を `next typegen && tsc --noEmit` に変更後、`pnpm install --frozen-lockfile` / `typecheck` / `lint` / `test` / `build` がすべて終了コード 0（AC-21a）。`harness-doctor.sh` は `[FAIL]` 無し、4 つの script 対応が `[ OK ]`（AC-32b）。`bash scripts/verify.sh`（full）は typecheck / lint / test / build すべて PASS。
+- 2026-10-07: レビュー対応。reviewer の Major 3 件を対応（T8 記録、typecheck の検査テスト追加と検出力確認、仕様の本文・変更履歴の更新）。Minor は ADR の古い記述、`git ls-files` による追跡済み `.env*` の検査、`import.meta.dirname` への統一、非機能テスト名の接頭辞を対応。security-reviewer は Critical/High 無し。Low の `braces` 脆弱性（開発時依存、上流修正待ち）と git 実行ファイルの PATH 解決は対応せず報告のみ。

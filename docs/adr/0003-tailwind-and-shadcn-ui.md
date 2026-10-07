@@ -33,7 +33,7 @@ Tailwind CSS v4 + shadcn/ui を採用する（案B）。本タスク（0002）�
 
 - 人間が 2026-10-07 に案B を選択した。
 - 検索フォーム・一覧・ページネーションなど、以降のタスクで UI 部品が複数必要になる見込みがある。
-- shadcn/ui の最新の導入手順（Tailwind v4 / Next.js 16 での `components.json` の項目など）は、実施時に公式ドキュメントで確認する。現時点では未確認。
+- `components.json` は shadcn/ui 公式ドキュメント（components-json）の記述に沿って作成した（Tailwind v4 のため `tailwind.config` は空）。`style: new-york` と `baseColor: neutral` は初期化後に変更できないとされており、最初のコンポーネントを追加する前なら見直せる。
 
 ## 影響・トレードオフ
 

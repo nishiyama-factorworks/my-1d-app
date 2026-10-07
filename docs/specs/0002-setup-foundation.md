@@ -29,7 +29,7 @@
 - package.jsonのscripts（`typecheck` `lint` `test` `build` `format`）。`test` は実行して終了する形（`vitest run`）
 - `.env.example`（キー名のみ。`GITHUB_TOKEN`）
 - ハーネスの導入と整合（`harness.env` のコマンドとscriptsの一致、`harness-doctor.sh` の確認）
-- ディレクトリ構成の決定: `src/` は使わず、ルート直下に `app/`（ルーティング）・`features/<名前>/`（機能単位）・`components/ui/`（再利用UI）・`lib/`（横断ユーティリティ）を置く。CLAUDE.md 6節と `SRC_REGEX` は実態に合わせる（`SRC_REGEX` は既にルート直下を許容済み）
+- ディレクトリ構成の決定: `src/` は使わず、ルート直下に `app/`（ルーティング）・`features/<名前>/`（機能単位）・`components/ui/`（再利用UI）・`lib/`（横断ユーティリティ）を置く。CLAUDE.md 6節は実態に合わせる。`.claude/harness.env` の `SRC_REGEX` はルート直下を許容済みだが `features/` が含まれていないため、`features` を追加する
 - CSS手法・UIライブラリ: Tailwind CSS v4（導入済み）+ shadcn/ui。本タスクでは shadcn/ui の初期化（`components.json`、`lib/utils.ts` の `cn`）までとし、個別コンポーネントは必要になったタスクで追加する。決定は ADR に記録する
 - `.gitignore` の整備（`.env*` を除外し `.env.example` のみ追跡）と、プレースホルダーのトップページ（Create Next App の雛形を置き換える）
 
@@ -71,10 +71,11 @@
 
 - [x] コンポーネントライブラリとCSS手法の選定 → Tailwind CSS v4 + shadcn/ui（2026-10-07 人間が決定。ADR に記録する）
 - [x] ディレクトリ構成 → `src/` を使わずルート直下（2026-10-07 人間が決定）
-- [ ] shadcn/ui の初期化で追加される依存（`clsx` `tailwind-merge` `class-variance-authority` `lucide-react` 等）は、導入時に人間へ個別承認を取る（CLAUDE.md 5節）
+- [x] shadcn/ui 関連の依存は導入時に人間へ個別承認を取る（CLAUDE.md 5節）。本タスクでは `clsx` と `tailwind-merge` のみ承認済み・追加済み。`class-variance-authority` `lucide-react` `tw-animate-css` は最初のコンポーネントを追加するタスクで改めて承認を取る
 
 ## 10. 変更履歴
 
 | 日付       | 変更 | 理由                 |
 | ---------- | ---- | -------------------- |
 | 2026-10-07 | 初版 | 全体仕様0001から分割 |
+| 2026-10-07 | 未決事項の決定を反映（ルート直下構成、Tailwind + shadcn/ui、依存は clsx/tailwind-merge のみ）。`SRC_REGEX` へ `features` を追加する旨を4.1に明記。Status を approved に、Issue を #2 に | `/feature #2` での人間の決定・承認 |

@@ -57,7 +57,14 @@ describe("プロジェクト構造 (AC-21b)", () => {
     expect(smokeTests.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("AC-21b: scripts.test が vitest run である (非機能)", () => {
+  it("非機能8節: scripts.test が vitest run である", () => {
     expect(readPackageJson().scripts.test).toBe("vitest run");
+  });
+
+  it("AC-21a: scripts.typecheck が tsc の前に型生成 (next typegen) を行う", () => {
+    // 生成型 (LayoutProps 等) は Git 管理外のため、クリーン状態では生成しないと型エラーになる
+    expect(readPackageJson().scripts.typecheck).toMatch(
+      /^next typegen && tsc /,
+    );
   });
 });
