@@ -137,7 +137,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/types.ts`、`lib/github/errors.ts`、`lib/github/errors.test.ts`（3 ファイル）
   - 完了条件: `pnpm test` PASS、`pnpm typecheck` `pnpm lint` PASS。
 
-- [ ] **T3: レスポンスの検証と変換**
+- [x] **T3: レスポンスの検証と変換**
   - 対応 AC: AC-5b、AC-13a、AC-13b（変換部分）、AC-24d（想定外の形）
   - 先に書くテスト: `lib/github/mappers.test.ts`（`// @vitest-environment node`）
     - `AC-5b: total_count=1234 と 30件の items を totalCount と RepoSummary 30件に変換し、各要素が fullName・ownerLogin・ownerAvatarUrl を持つ`
