@@ -72,7 +72,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
   - 注意: `.env.example` は Edit/Write ツールで編集できる（guard-files.sh の例外）。Bash の `cat` 等では読まない。`.env` / `.env.local` は読まない・作らない。
   - 完了条件: `pnpm test` PASS。
 
-- [ ] **T4: ADR（Tailwind CSS v4 + shadcn/ui 採用）と architecture.md の更新**
+- [x] **T4: ADR（Tailwind CSS v4 + shadcn/ui 採用）と architecture.md の更新**
   - 対応 AC: なし（仕様 4.1「決定は ADR に記録する」「ディレクトリ構成の決定」）
   - 先に書くテスト: なし（文書のみ。Stop ゲート対象外）
   - 実装対象: `docs/adr/0003-tailwind-and-shadcn-ui.md`（`docs/adr/0000-template.md` をコピー。Status: Accepted、決定日 2026-10-07、決定者は人間。比較案: Tailwind のみ / Tailwind + shadcn/ui / CSS Modules / 他の UI ライブラリ。追加される依存とその導入方針（T5）も「影響」に書く）、`docs/architecture.md`（2節のスタイリング＝Tailwind CSS v4 + shadcn/ui（ADR 0003）、テスト＝Vitest + Testing Library + jsdom、3節の `src/app/` 等をルート直下の `app/` `features/<名前>/` `components/ui/` `lib/` に修正）（2 ファイル）
