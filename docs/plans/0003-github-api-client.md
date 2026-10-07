@@ -196,7 +196,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/token-leak.test.ts`（1 ファイル。テストが失敗した場合のみ `lib/github/http.ts` `errors.ts` を修正）
   - 完了条件: `pnpm test` PASS、検出力確認の記録。
 
-- [ ] **T7: サーバー専用であることの検査（AC-23c）**
+- [x] **T7: サーバー専用であることの検査（AC-23c）**
   - 対応 AC: AC-23c
   - 先に書くテスト: `lib/github/server-only.test.ts`（`// @vitest-environment node`。**`vi.mock("server-only")` を書かない**）
     - `AC-23c: react-server 条件なしで server-only を読み込むと、Client Component からは使えない旨のエラーで拒否される`（`await expect(import("server-only")).rejects.toThrow(/cannot be imported from a Client Component/)`）
@@ -319,3 +319,4 @@ AC と検証手段の対応:
 - 2026-10-07: T1 人間承認のうえ追加: server-only 0.0.1（MIT、最終公開 2022-09-03、依存なし）。`node_modules/server-only/package.json` の exports が react-server→./empty.js、default→./index.js であることを確認済み（T7 の前提）。
 - 2026-10-07: T4 実装後、本文の読み取り中にタイムアウトすると UPSTREAM になる点が AC-24e（タイムアウトは NETWORK）と食い違うと判明。テストを先に追加して RED（UPSTREAM が返る）を確認し、`controller.signal.aborted` のとき NETWORK にして GREEN。`vi.mock("server-only")` は node_modules のパッケージに効くことを確認済み。
 - 2026-10-07: T6 完了。検出力確認（いずれも本番コードを一時的に壊して該当テストの失敗を確認し、git checkout で復元）: (1) GitHubApiError の message にトークンを含める → 失敗、(2) NETWORK エラーに元の例外を cause として渡す → 失敗（search/repo 各の接続失敗・タイムアウト 計4件）、(3) NETWORK 送出前に console.error でヘッダを出す → 失敗（同 計4件）。
+- 2026-10-07: T7 完了。検出力確認: `http.ts` と `client.ts` から `import "server-only"` を一時的に外すと、拒否を検査する3件と先頭 import を検査する2件が失敗（server-only 単体の1件は対象ファイルに依存しないため PASS のまま）。復元済み。手動のビルド確認: 一時的に `"use client"` の部品から `@/lib/github` を import した `app/server-only-check/` を作って `pnpm build` を実行すると、終了コード 1 で失敗し、エラーに `server-only` と `Client Component Browser`（`./lib/github/client.ts`）が出た。一時ファイルを削除すると `pnpm build` は終了コード 0 に戻った（コミットしていない）。
