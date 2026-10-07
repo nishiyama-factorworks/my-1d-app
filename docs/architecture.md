@@ -42,7 +42,7 @@
 - GitHub API のエラー: `GitHubApiError`（`kind`: `RATE_LIMIT` `NOT_FOUND` `VALIDATION` `UPSTREAM` `NETWORK`、`status`、`resetAt`）を throw する。メッセージは種別ごとの固定文言で、トークン・URL・レスポンス本文を含めない
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
 - 認証・認可: <方針>
-- エラー形式: `{ error: { code, message } }`
+- エラー形式（Route Handler の応答）: `{ error: { code, message } }`。GitHub API 層のエラーは上の `GitHubApiError`
 
 ## 6. 環境変数
 

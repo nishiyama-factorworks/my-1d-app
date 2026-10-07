@@ -222,17 +222,22 @@ describe("トークンとヘッダ", () => {
     },
   );
 
-  it.each(calls)(
-    "AC-23b: GITHUB_TOKEN が未設定のとき %s は Authorization 無しで呼び、成功する",
-    async (_name, call, response) => {
-      vi.stubEnv("GITHUB_TOKEN", "");
-      const mock = stubFetch(response);
+  describe.each([
+    ["未設定（undefined）", undefined],
+    ["空文字", ""],
+  ])("AC-23b: GITHUB_TOKEN が%s", (_label, value) => {
+    it.each(calls)(
+      "%s は Authorization 無しで呼び、成功する",
+      async (_name, call, response) => {
+        vi.stubEnv("GITHUB_TOKEN", value);
+        const mock = stubFetch(response);
 
-      await expect(call()).resolves.toBeDefined();
+        await expect(call()).resolves.toBeDefined();
 
-      expect(calledHeaders(mock).has("authorization")).toBe(false);
-    },
-  );
+        expect(calledHeaders(mock).has("authorization")).toBe(false);
+      },
+    );
+  });
 });
 
 describe("失敗の分類", () => {
@@ -319,6 +324,35 @@ describe("失敗の分類", () => {
       await expectKind(call(), "NETWORK");
     },
   );
+
+  describe("AC-24e: 公開関数でのタイムアウト", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it.each(fns)(
+      "AC-24e: %s は 10 秒で応答が無いとき NETWORK で失敗する",
+      async (_name, call) => {
+        vi.useFakeTimers();
+        const mock = vi.fn(
+          (_input: string | URL, init?: RequestInit) =>
+            new Promise<Response>((_resolve, reject) => {
+              init?.signal?.addEventListener("abort", () => {
+                reject(new DOMException("aborted", "AbortError"));
+              });
+            }),
+        );
+        vi.stubGlobal("fetch", mock);
+
+        const result = catchError(call());
+        await vi.advanceTimersByTimeAsync(10_000);
+
+        const e = await result;
+        expect(isGitHubApiError(e)).toBe(true);
+        if (isGitHubApiError(e)) expect(e.kind).toBe("NETWORK");
+      },
+    );
+  });
 });
 
 describe("入力検証（searchRepositories）", () => {
