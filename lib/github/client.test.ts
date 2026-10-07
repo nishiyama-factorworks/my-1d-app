@@ -382,6 +382,26 @@ describe("入力検証（searchRepositories）", () => {
     },
   );
 
+  it.each([
+    ["英字257文字", "a".repeat(257)],
+    ["空白で埋まった257文字", " ".repeat(257)],
+  ])(
+    "AC-5e: q が%sのとき fetch を呼ばず VALIDATION で失敗する",
+    async (_label, q) => {
+      await expectValidation({ q });
+    },
+  );
+
+  it("AC-5e: q が256文字ちょうどのとき fetch を呼んで成功する", async () => {
+    const mock = stubFetch(() => jsonResponse(searchBody()));
+    const q = "a".repeat(256);
+
+    await searchRepositories({ q });
+
+    expect(mock).toHaveBeenCalledTimes(1);
+    expect(calledUrl(mock).searchParams.get("q")).toBe(q);
+  });
+
   it("AC-5d: page が境界値 1 のとき fetch を呼んで成功する", async () => {
     const mock = stubFetch(() => jsonResponse(searchBody()));
 

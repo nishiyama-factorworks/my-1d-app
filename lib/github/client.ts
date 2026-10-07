@@ -15,6 +15,8 @@ const DEFAULT_PER_PAGE = 30;
 const OWNER_PATTERN = /^[A-Za-z0-9-]{1,39}$/;
 const REPO_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
 const MAX_PER_PAGE = 100;
+// GitHub のドキュメントが定める検索クエリの上限文字数に合わせる
+const MAX_Q_LENGTH = 256;
 
 export async function searchRepositories({
   q,
@@ -23,6 +25,7 @@ export async function searchRepositories({
 }: SearchRepositoriesParams): Promise<SearchRepositoriesResult> {
   if (
     q.trim() === "" ||
+    q.length > MAX_Q_LENGTH ||
     !Number.isInteger(page) ||
     page < 1 ||
     !Number.isInteger(perPage) ||

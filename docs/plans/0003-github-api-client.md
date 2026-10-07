@@ -249,7 +249,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/mappers.ts`。**テストデータの更新**: `client.test.ts` と `token-leak.test.ts` の `example.com` 系 URL を実際の GitHub のホスト（`avatars.githubusercontent.com`）に直す（仕様変更に伴うデータ更新で、期待値は弱めない）
   - 完了条件: `pnpm test` PASS。
 
-- [ ] **T11: `q` の長さ上限（AC-5e）と `.env.example` のトークン権限の明記**
+- [x] **T11: `q` の長さ上限（AC-5e）と `.env.example` のトークン権限の明記**
   - 先に書くテスト: `lib/github/client.test.ts`（257 文字で `fetch` を呼ばず `VALIDATION`、256 文字は成功）
   - 実装対象: `lib/github/client.ts`、`.env.example`（コメントに「公開リポジトリの読み取り専用トークンに限る」を追記。コメントに `KEY=` 形式を書かない。`tests/foundation/env-files.test.ts` で検査される）
   - 完了条件: `pnpm test` PASS。
