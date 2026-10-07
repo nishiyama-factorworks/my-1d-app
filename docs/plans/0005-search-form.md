@@ -115,7 +115,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `features/search/components/search-form.tsx`、`features/search/components/search-form.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: 送信と遷移（ボタン・Enter・正規化・符号化）**
+- [x] **T2: 送信と遷移（ボタン・Enter・正規化・符号化）**
   - 対応 AC: AC-2a、AC-2b、AC-22a、AC-22b
   - 先に書くテスト: `features/search/components/search-form.test.tsx` に追加（`push` の引数を完全一致で検証。各テストで `push` が1回だけ呼ばれることも確かめる）
     - `AC-2a: "react" を入力して「検索」ボタンを押すと /?q=react&page=1 へ遷移する`
