@@ -181,7 +181,7 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
   - 実装対象: `features/search/components/pagination.tsx`、`features/search/components/pagination.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm lint` PASS（`role="link"` と `aria-disabled` の組み合わせが jsx-a11y で通ること）、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: 範囲外ページの案内コンポーネント**
+- [x] **T3: 範囲外ページの案内コンポーネント**
   - 対応 AC: AC-9b、AC-9c（表示部分）
   - 先に書くテスト: `features/search/components/out-of-range-notice.test.tsx`（jsdom。モックなし）
     - `AC-9b: 先頭ページへの案内のとき「指定されたページは存在しません」と、/?q=react&page=1 への「先頭のページへ」リンクを表示する`
