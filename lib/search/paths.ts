@@ -1,3 +1,11 @@
+// パスの区切り（セグメント）に値を入れるため、クエリ用の URLSearchParams ではなく
+// encodeURIComponent を使う。
+// - URLSearchParams は空白を "+" にするが、パス中の "+" は空白ではなく文字どおりの "+" になる
+// - "/" "?" "#" "%" を符号化するので、値がセグメントの外へはみ出さない
+export function buildRepoPath(owner: string, repo: string): string {
+  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+
 // URLSearchParams を使う理由:
 // - GET フォーム送信と空白の表記（+）が一致する
 // - 値の符号化漏れが起きない

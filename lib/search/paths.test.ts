@@ -1,7 +1,49 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { buildSearchPath } from "./paths";
+import { buildRepoPath, buildSearchPath } from "./paths";
+
+describe("buildRepoPath", () => {
+  it("AC-25j: owner が vercel、repo が next.js のとき /repos/vercel/next.js を返す", () => {
+    expect(buildRepoPath("vercel", "next.js")).toBe("/repos/vercel/next.js");
+  });
+
+  it.each([
+    { label: "空白", owner: "a b", repo: "c", expected: "/repos/a%20b/c" },
+    {
+      label: "スラッシュ",
+      owner: "x/y",
+      repo: "z",
+      expected: "/repos/x%2Fy/z",
+    },
+    {
+      label: "? と #",
+      owner: "o",
+      repo: "r?x#y",
+      expected: "/repos/o/r%3Fx%23y",
+    },
+    { label: "%", owner: "o", repo: "100%", expected: "/repos/o/100%25" },
+    { label: "+", owner: "o", repo: "c++", expected: "/repos/o/c%2B%2B" },
+    {
+      label: "日本語",
+      owner: "日本",
+      repo: "r",
+      expected: "/repos/%E6%97%A5%E6%9C%AC/r",
+    },
+  ])(
+    "AC-25j: $label を含む owner/repo のとき各セグメントが符号化されたパスを返す",
+    ({ owner, repo, expected }) => {
+      expect(buildRepoPath(owner, repo)).toBe(expected);
+    },
+  );
+
+  it("AC-25j: owner が外部 URL 形式でも、パスは /repos/ で始まりセグメントが 2 つのままになる", () => {
+    const path = buildRepoPath("https://evil.example", "r");
+
+    expect(path.startsWith("/repos/")).toBe(true);
+    expect(path.slice("/repos/".length).split("/")).toHaveLength(2);
+  });
+});
 
 describe("buildSearchPath", () => {
   it('AC-25i: キーワード "日本語 & react"、ページ2のとき /?q=%E6%97%A5%E6%9C%AC%E8%AA%9E+%26+react&page=2 を返す', () => {

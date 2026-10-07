@@ -168,7 +168,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `lib/search/paths.ts`、`lib/search/paths.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T6: 詳細パスの生成**
+- [x] **T6: 詳細パスの生成**
   - 対応 AC: AC-25j
   - 先に書くテスト: `lib/search/paths.test.ts` に `describe("buildRepoPath")` を追加
     - `AC-25j: owner "vercel"、repo "next.js" のとき /repos/vercel/next.js を返す`
