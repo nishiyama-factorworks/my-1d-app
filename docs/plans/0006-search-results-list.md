@@ -126,7 +126,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `next.config.ts`、`tests/foundation/next-config.test.ts`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck` PASS、`pnpm build` が成功（設定の検証）、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: 詳細パスの組み立て関数**
+- [x] **T2: 詳細パスの組み立て関数**
   - 対応 AC: AC-10（リンク先の生成）
   - 先に書くテスト: `features/search/lib/repo-path.test.ts`（`// @vitest-environment node`）
     - `AC-10: "vercel/next.js" から /repos/vercel/next.js を作る`（期待値は文字列リテラル）
