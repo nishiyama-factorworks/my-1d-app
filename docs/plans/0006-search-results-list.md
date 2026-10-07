@@ -150,7 +150,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `features/search/components/search-results.tsx`、`features/search/components/search-results.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: トップページでの取得と一覧の組み込み**
+- [x] **T4: トップページでの取得と一覧の組み込み**
   - 対応 AC: AC-4a、AC-4b、仕様 6.1（例外をそのまま投げる）、0005 AC-1・AC-22c と 0002 AC-21b（既存テストの検証内容を維持）
   - 先に書くテスト: `app/page.test.tsx` に追加（1.2 (b) のモックを追加。描画は既存の `renderPage`）
     - `AC-4a: URL が /?q=react&page=2 のとき q=react・page=2 で1回だけ検索する`（`toHaveBeenCalledTimes(1)`、`toHaveBeenCalledWith({ q: "react", page: 2, perPage: 30 })`。期待値は数値リテラル。Q5 で `perPage` を渡さないと決めた場合は `{ q: "react", page: 2 }`）
@@ -262,3 +262,4 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 0010: 0件の専用表示（AC-17）は検索キーワードを使うため、`SearchResults` に `q` を渡すか、ページ側で分岐する。読み込み中（AC-16a）で一覧だけをストリーミングする場合は、取得を非同期の Server Component に切り出して `<Suspense>` で包む（本計画 1.2 (a) の案B）。その場合ページのテスト方法を見直す。
   - 0011: キャッシュ（AC-29）は `lib/github/http.ts` の `fetch` の設定で扱う（本計画では触らない）。見出し・`role="status"`・行全体のクリック範囲は提案 P1〜P3。
 - 2026-10-08: 人間が推奨どおりで承認（Status: in-progress）。決定事項: Q1 `fullName` に `/` が無ければ `GitHubApiError("UPSTREAM")`（仕様 6.1 に追記済み）／Q2 `remotePatterns` は `{ protocol: "https", hostname: "avatars.githubusercontent.com", port: "", pathname: "/u/**", search: "?v=4" }` とし、`hasRemoteMatch` による照合テストも足す／Q3 アイコンはリンクの外／Q4 257 文字以上の `q` は 0006 では扱わない（0010）／Q5 `perPage: SEARCH_PER_PAGE` を明示／Q6 提案 P1〜P4 は採らない。`/issue split` はせず 1 PR で進める。
+- 2026-10-08: T4 の検出力確認。`app/page.tsx` の `q === null` の判定を常に偽にして `q` の有無を見ずに検索すると、AC-4b の 4 件がすべて失敗した（復元済み）。最初の変異は実装の形（`q === null ? null : await …`）と文字列が合わず当たっていなかったため、やり直した。
