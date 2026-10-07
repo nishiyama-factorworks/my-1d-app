@@ -78,7 +78,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
   - 実装対象: `docs/adr/0003-tailwind-and-shadcn-ui.md`（`docs/adr/0000-template.md` をコピー。Status: Accepted、決定日 2026-10-07、決定者は人間。比較案: Tailwind のみ / Tailwind + shadcn/ui / CSS Modules / 他の UI ライブラリ。追加される依存とその導入方針（T5）も「影響」に書く）、`docs/architecture.md`（2節のスタイリング＝Tailwind CSS v4 + shadcn/ui（ADR 0003）、テスト＝Vitest + Testing Library + jsdom、3節の `src/app/` 等をルート直下の `app/` `features/<名前>/` `components/ui/` `lib/` に修正）（2 ファイル）
   - 完了条件: ADR がテンプレートのセクションを削らず埋まっている。architecture.md に `src/` の記述が残っていない。
 
-- [ ] **T5: 【人間の承認が必要】shadcn/ui 用の依存追加**
+- [x] **T5: 【人間の承認が必要】shadcn/ui 用の依存追加**
   - 対応 AC: なし（仕様 4.1 / 9節の未決事項「導入時に人間へ個別承認を取る」）
   - 先に書くテスト: なし（依存追加のみ。利用とテストは T6）
   - 手順:
@@ -189,3 +189,4 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
 
 - 2026-10-07: 計画作成（draft）。未着手。次は人間の承認後に T1 から開始する。
 - 2026-10-07: 人間が推奨どおりで承認（Status: in-progress）。決定事項: shadcn/ui は選択肢 A（`clsx` `tailwind-merge` のみ・手動初期化。ただし `pnpm add` 実行前に T5 で改めて承認を取る）／`SRC_REGEX` に `features` を本タスクで追加（T9）／`typecheck` 失敗時は `next typegen && tsc --noEmit` に変更／ブランチ名は `feat/0002-setup-foundation` のまま／ディレクトリ構成の独立 ADR は作らない／P1・P3 を採用（P2・P4・P5 は別 Issue）／`/issue split` はせず 1 PR で進める。
+- 2026-10-07: T5 人間承認のうえ追加: clsx 2.1.1 / tailwind-merge 3.7.0（`pnpm add` 経由）。
