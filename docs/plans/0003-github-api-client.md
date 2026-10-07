@@ -239,7 +239,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
 
 ### レビュー指摘への追加タスク（人間が採用。仕様の AC-5e〜5g、13d・13e、23e、24f を追加済み）
 
-- [ ] **T9: HTTP 層の多層防御（AC-23e、AC-24f、エラー本文の破棄）**
+- [x] **T9: HTTP 層の多層防御（AC-23e、AC-24f、エラー本文の破棄）**
   - 先に書くテスト: `lib/github/http.test.ts`（AC-23e: `//evil.example/x` と絶対 URL を渡すと `fetch` を呼ばず `VALIDATION`、有効なパスは成功。エラー応答（429 等）で本文ストリームが破棄される＝`body.cancel` 相当が呼ばれること）、`lib/github/errors.test.ts`（AC-24f: `x-ratelimit-reset` が桁数の大きい値のとき `resetAt` が `undefined`）
   - 実装対象: `lib/github/http.ts`（URL 組み立て後に `url.origin !== BASE_URL` で失敗、`!res.ok` で `res.body?.cancel()`）、`lib/github/errors.ts`（`Number.isSafeInteger` と `Invalid Date` の確認）
   - 完了条件: `pnpm test` PASS、`verify --quick` PASS。

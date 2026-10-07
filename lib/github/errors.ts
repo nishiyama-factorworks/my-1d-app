@@ -32,7 +32,10 @@ export function isGitHubApiError(e: unknown): e is GitHubApiError {
 function parseResetAt(headers: Headers): Date | undefined {
   const raw = headers.get("x-ratelimit-reset");
   if (raw === null || !/^\d+$/.test(raw)) return undefined;
-  return new Date(Number(raw) * 1000);
+  const seconds = Number(raw);
+  if (!Number.isSafeInteger(seconds)) return undefined;
+  const date = new Date(seconds * 1000);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 export function classifyHttpError(

@@ -24,6 +24,10 @@ export async function githubGet(
   query?: Record<string, string>,
 ): Promise<unknown> {
   const url = new URL(path, BASE_URL);
+  // 絶対 URL や "//host" 形式で別オリジンへ向けられないようにする（トークン漏えい防止）。
+  if (url.origin !== BASE_URL) {
+    throw new GitHubApiError("VALIDATION");
+  }
   if (query) {
     url.search = new URLSearchParams(query).toString();
   }
@@ -42,6 +46,8 @@ export async function githubGet(
       throw new GitHubApiError("NETWORK");
     }
     if (!res.ok) {
+      // エラー本文は使わないので破棄し、接続を解放する。
+      await res.body?.cancel().catch(() => {});
       throw classifyHttpError(res.status, res.headers, endpoint);
     }
     try {

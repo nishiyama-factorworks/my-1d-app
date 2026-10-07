@@ -107,7 +107,55 @@ describe("githubGet: URL の組み立て", () => {
   });
 });
 
+describe("githubGet: 宛先の固定", () => {
+  it.each([
+    "//evil.example/x",
+    "https://evil.example/",
+    "http://api.github.com/x",
+  ])(
+    "AC-23e: 絶対 URL（%s）を path に渡すと fetch を呼ばず VALIDATION で失敗する",
+    async (path) => {
+      const fetchMock = stubFetch(async () => jsonResponse({}));
+
+      const e = await catchError(githubGet("repo", path));
+
+      expect(isGitHubApiError(e)).toBe(true);
+      expect(e).toMatchObject({ kind: "VALIDATION" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("AC-23e: /repos/vercel/next.js のような通常のパスは成功する", async () => {
+    const fetchMock = stubFetch(async () => jsonResponse({ ok: true }));
+
+    const result = await githubGet("repo", "/repos/vercel/next.js");
+
+    expect(result).toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("githubGet: 失敗の分類", () => {
+  it("非機能: HTTP エラー応答のとき本文ストリームを破棄（cancel）する", async () => {
+    let cancelled = false;
+    stubFetch(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            cancel() {
+              cancelled = true;
+            },
+          }),
+          { status: 429, headers: { "x-ratelimit-reset": "1700000000" } },
+        ),
+    );
+
+    const e = await catchError(githubGet("search", "/search/repositories"));
+
+    expect(e).toMatchObject({ kind: "RATE_LIMIT" });
+    expect(cancelled).toBe(true);
+  });
+
   it("AC-24e: fetch が TypeError で失敗したとき NETWORK になる", async () => {
     stubFetch(async () => {
       throw new TypeError("fetch failed");

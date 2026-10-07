@@ -48,6 +48,23 @@ describe("classifyHttpError", () => {
     expect(invalid.resetAt).toBeUndefined();
   });
 
+  it("AC-24f: x-ratelimit-reset が安全な整数でない巨大な値のとき resetAt は undefined で、通常値では Date を保持する", () => {
+    const huge = classifyHttpError(
+      429,
+      new Headers({ "x-ratelimit-reset": "99999999999999999999999" }),
+      "search",
+    );
+    expect(huge.kind).toBe("RATE_LIMIT");
+    expect(huge.resetAt).toBeUndefined();
+
+    const normal = classifyHttpError(
+      429,
+      new Headers({ "x-ratelimit-reset": "1700000000" }),
+      "search",
+    );
+    expect(normal.resetAt).toEqual(new Date(1700000000000));
+  });
+
   it("AC-24b: 詳細 API の 404 は NOT_FOUND に分類される", () => {
     const e = classifyHttpError(404, new Headers(), "repo");
     expect(e.kind).toBe("NOT_FOUND");
