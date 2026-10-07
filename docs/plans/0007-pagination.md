@@ -150,7 +150,7 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: ページ番号の並びを作る純粋関数**
+- [x] **T1: ページ番号の並びを作る純粋関数**
   - 対応 AC: AC-8a、AC-8e、AC-8g（並びの決定）
   - 先に書くテスト: `features/search/lib/page-items.test.ts`（`// @vitest-environment node`。`it.each` の表形式。期待値は配列リテラル）
     - `AC-8a: 現在 2・最大 4 のとき [1, 2, 3, 4] になる`
