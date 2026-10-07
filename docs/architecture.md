@@ -28,6 +28,7 @@
 - `app/`: ルーティング。薄く保つ
 - `features/<名前>/`: 機能単位（UI・アクション・ロジック・テストを同居）
   - `features/search/`: 検索フォーム（`components/search-form.tsx`）。URL の `q` を初期値にし、送信で `/?q=…&page=1` へ遷移する
+  - 検索結果一覧（`components/search-results.tsx`）。取得は `app/page.tsx` が `q` があるときだけ `searchRepositories` で行い、結果を渡す（一覧は Server Component）
 - `components/ui/`: 再利用 UI（shadcn/ui の部品もここ）
 - `lib/`: 横断ユーティリティ
 - `lib/github/`: GitHub REST API の呼び出し層。GitHub API は**ここだけ**が呼ぶ。公開面は `lib/github/index.ts`（`searchRepositories` / `getRepository` / `GitHubApiError` と型）
@@ -41,6 +42,7 @@
 
 - Server / Client の境界: トークン（`GITHUB_TOKEN`）を扱うモジュール（`lib/github/http.ts` `client.ts`）は先頭で `import "server-only"` とし、Client Component から読み込むとビルドで失敗させる。型とエラー定義（`types.ts` `errors.ts`）は Client からも import できる
 - Client Component は `features/search/components/search-form.tsx` のみ（`"use client"`）。`lib/github/`（server-only）を読み込まない。ページ（`app/page.tsx`）は Server Component のままで、`searchParams` を `parseSearchParams` で解釈して `initialQuery` を渡す
+- 画像: オーナーアイコンは `next/image`。外部ホストは `avatars.githubusercontent.com` の `/u/**`（クエリは `?v=4` のみ）だけを `next.config.ts` の `images.remotePatterns` で許可する（ホストは 0003 の `avatar_url` の検証と一致。**パスとクエリは 0003 より狭い**ので、0003 を通っても `/u/` 以外のパスや `?v=4` 以外のクエリのアイコンは `/_next/image` が 400 を返し、画像が壊れる。開発モードではローダーが例外を投げてページが落ちる。GitHub が `?v=4` を変えると全アイコンが壊れる点にも注意）
 - GitHub API のエラー: `GitHubApiError`（`kind`: `RATE_LIMIT` `NOT_FOUND` `VALIDATION` `UPSTREAM` `NETWORK`、`status`、`resetAt`）を throw する。メッセージは種別ごとの固定文言で、トークン・URL・レスポンス本文を含めない
 - GitHub API 層の防御策: 宛先オリジンは `api.github.com` に固定。公開と確認できないリポジトリは返さない。レスポンスの `avatar_url` / `html_url` は https かつ GitHub のホストのみ許可する
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
