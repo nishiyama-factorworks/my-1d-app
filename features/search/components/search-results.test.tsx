@@ -96,3 +96,30 @@ describe("SearchResults: 一覧の表示", () => {
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 });
+
+describe("SearchResults: 1,000件上限の注記", () => {
+  const NOTE = "上位1,000件まで表示します";
+
+  it.each([{ totalCount: 1001 }, { totalCount: 50000 }])(
+    `AC-9a: 総件数が $totalCount のとき「${NOTE}」を表示する`,
+    ({ totalCount }) => {
+      render(<SearchResults totalCount={totalCount} items={makeItems(1)} />);
+
+      expect(screen.getByText(NOTE)).toBeInTheDocument();
+    },
+  );
+
+  it.each([{ totalCount: 1000 }, { totalCount: 0 }])(
+    "AC-9a: 総件数が $totalCount のとき注記を表示しない",
+    ({ totalCount }) => {
+      render(
+        <SearchResults
+          totalCount={totalCount}
+          items={makeItems(totalCount === 0 ? 0 : 1)}
+        />,
+      );
+
+      expect(screen.queryByText(NOTE)).toBeNull();
+    },
+  );
+});

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { GitHubApiError } from "@/lib/github/errors";
 import type {
@@ -158,5 +158,175 @@ describe("トップページ", () => {
         searchParams: Promise.resolve({ q: "react" }),
       }),
     ).rejects.toBe(error);
+  });
+});
+
+const sampleItem = {
+  fullName: "vercel/next.js",
+  ownerLogin: "vercel",
+  ownerAvatarUrl: "https://avatars.githubusercontent.com/u/14985020?v=4",
+};
+
+function paginationNav() {
+  return screen.getByRole("navigation", { name: "ページネーション" });
+}
+
+describe("トップページ: ページネーションと範囲外ページ", () => {
+  it('AC-8a: 総件数100・/?q=react&page=2 のとき、一覧の下にページネーションが表示され、2 に aria-current="page" が付く', async () => {
+    searchRepositories.mockResolvedValue({
+      totalCount: 100,
+      items: [sampleItem],
+    });
+
+    await renderPage({ q: "react", page: "2" });
+
+    const nav = within(paginationNav());
+    expect(nav.getByRole("link", { name: "2" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(nav.getByRole("link", { name: "1" })).not.toHaveAttribute(
+      "aria-current",
+    );
+    expect(nav.getByRole("link", { name: "4" })).toBeInTheDocument();
+
+    // 仕様 6.1: ページネーションは一覧の下にある（DOM 上で一覧の行より後ろ）
+    const row = screen.getByRole("link", { name: "vercel/next.js" });
+    expect(
+      row.compareDocumentPosition(paginationNav()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it.each([
+    { totalCount: 30, label: "表示しない", shown: false },
+    { totalCount: 31, label: "表示する", shown: true },
+  ])(
+    "AC-8d: 総件数 $totalCount のときページネーションを $label",
+    async ({ totalCount, shown }) => {
+      searchRepositories.mockResolvedValue({
+        totalCount,
+        items: [sampleItem],
+      });
+
+      await renderPage({ q: "react" });
+
+      const nav = screen.queryByRole("navigation", {
+        name: "ページネーション",
+      });
+      if (shown) {
+        expect(nav).toBeInTheDocument();
+      } else {
+        expect(nav).toBeNull();
+      }
+    },
+  );
+
+  it("AC-9a: 総件数50000のとき、最後のページ番号は34で35は無く、「上位1,000件まで表示します」が表示される", async () => {
+    searchRepositories.mockResolvedValue({
+      totalCount: 50000,
+      items: [sampleItem],
+    });
+
+    await renderPage({ q: "react" });
+
+    const nav = within(paginationNav());
+    expect(nav.getByRole("link", { name: "34" })).toBeInTheDocument();
+    expect(nav.queryByRole("link", { name: "35" })).toBeNull();
+    expect(screen.getByText("上位1,000件まで表示します")).toBeInTheDocument();
+  });
+
+  it("AC-9b: /?q=react&page=35 のとき検索APIを呼ばず、案内と先頭のページへのリンクだけを表示する", async () => {
+    await renderPage({ q: "react", page: "35" });
+
+    expect(searchRepositories).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("指定されたページは存在しません"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("searchbox", { name: "キーワード" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "先頭のページへ" }),
+    ).toHaveAttribute("href", "/?q=react&page=1");
+    expect(screen.queryByText(/総ヒット件数/)).toBeNull();
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(
+      screen.queryByRole("navigation", { name: "ページネーション" }),
+    ).toBeNull();
+  });
+
+  it("AC-9b: /?q=react&page=34 のときは検索APIを page=34 で呼び、範囲外にしない", async () => {
+    searchRepositories.mockResolvedValue({
+      totalCount: 50000,
+      items: [sampleItem],
+    });
+
+    await renderPage({ q: "react", page: "34" });
+
+    expect(searchRepositories).toHaveBeenCalledWith({
+      q: "react",
+      page: 34,
+      perPage: 30,
+    });
+    expect(screen.queryByText("指定されたページは存在しません")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "vercel/next.js" }),
+    ).toBeInTheDocument();
+  });
+
+  it("AC-9c: /?q=react&page=3・総件数50・itemsが空のとき、案内と最終ページへのリンクだけを表示する", async () => {
+    searchRepositories.mockResolvedValue({ totalCount: 50, items: [] });
+
+    await renderPage({ q: "react", page: "3" });
+
+    expect(searchRepositories).toHaveBeenCalledTimes(1);
+    expect(searchRepositories).toHaveBeenCalledWith({
+      q: "react",
+      page: 3,
+      perPage: 30,
+    });
+    expect(
+      screen.getByText("指定されたページは存在しません"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "最終ページ（2ページ目）へ" }),
+    ).toHaveAttribute("href", "/?q=react&page=2");
+    expect(screen.queryByText(/総ヒット件数/)).toBeNull();
+    expect(screen.queryByRole("list")).toBeNull();
+    expect(
+      screen.queryByRole("navigation", { name: "ページネーション" }),
+    ).toBeNull();
+  });
+
+  it("AC-9c: /?q=react&page=2・総件数50のときは範囲外にしない", async () => {
+    searchRepositories.mockResolvedValue({
+      totalCount: 50,
+      items: [sampleItem],
+    });
+
+    await renderPage({ q: "react", page: "2" });
+
+    expect(screen.queryByText("指定されたページは存在しません")).toBeNull();
+    // 範囲外にならないときは、通常どおり一覧とページネーションが出る
+    expect(
+      screen.getByRole("link", { name: "vercel/next.js" }),
+    ).toBeInTheDocument();
+    expect(
+      within(paginationNav()).getByRole("link", { name: "2" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("AC-9d: /?q=react&page=2・総件数0のとき、範囲外の案内を出さず0件と空の一覧を表示する", async () => {
+    searchRepositories.mockResolvedValue({ totalCount: 0, items: [] });
+
+    await renderPage({ q: "react", page: "2" });
+
+    expect(screen.queryByText("指定されたページは存在しません")).toBeNull();
+    expect(screen.getByText("総ヒット件数: 0 件")).toBeInTheDocument();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+    expect(
+      screen.queryByRole("navigation", { name: "ページネーション" }),
+    ).toBeNull();
   });
 });

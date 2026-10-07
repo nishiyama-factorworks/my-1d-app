@@ -29,6 +29,8 @@
 - `features/<名前>/`: 機能単位（UI・アクション・ロジック・テストを同居）
   - `features/search/`: 検索フォーム（`components/search-form.tsx`）。URL の `q` を初期値にし、送信で `/?q=…&page=1` へ遷移する
   - 検索結果一覧（`components/search-results.tsx`）。取得は `app/page.tsx` が `q` があるときだけ `searchRepositories` で行い、結果を渡す（一覧は Server Component）
+  - ページネーション（`components/pagination.tsx`。番号の並びは `lib/page-items.ts` の `buildPageItems`）。最大ページ数は `lib/search/` の `calculateMaxPage`。押せない「前へ」「次へ」は `role="link"` と `aria-disabled="true"` の `span`
+  - 範囲外ページの案内（`components/out-of-range-notice.tsx`）。範囲外の判定は `app/page.tsx` が 2 段で行う: `page` が `calculateMaxPage(SEARCH_RESULT_LIMIT)`（現在 34）超なら GitHub API を呼ばずに範囲外（422 とレート制限の消費を避ける）、取得後は総件数に対して最終ページ超なら範囲外。総件数 0 は範囲外にしない
 - `components/ui/`: 再利用 UI（shadcn/ui の部品もここ）
 - `lib/`: 横断ユーティリティ
 - `lib/github/`: GitHub REST API の呼び出し層。GitHub API は**ここだけ**が呼ぶ。公開面は `lib/github/index.ts`（`searchRepositories` / `getRepository` / `GitHubApiError` と型）
