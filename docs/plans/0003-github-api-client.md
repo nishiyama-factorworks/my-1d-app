@@ -164,7 +164,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 注意: `vi.mock("server-only", ...)` が node_modules のパッケージに効くことをこのタスクで最初に確かめる。効かない場合は止めて、4節の代替案（Vitest の `resolve.alias`）を人間に相談する。
   - 完了条件: `pnpm test` PASS。
 
-- [ ] **T5: 公開関数 `searchRepositories` / `getRepository` と窓口**
+- [x] **T5: 公開関数 `searchRepositories` / `getRepository` と窓口**
   - 対応 AC: AC-5a、AC-5b、AC-13a、AC-13b、AC-23a、AC-23b、AC-24a〜AC-24e（公開関数を通した検証）
   - 先に書くテスト: `lib/github/client.test.ts`（`// @vitest-environment node`、`vi.mock("server-only", () => ({}))`、`fetch` のみモック。`@/lib/github`（`index.ts`）から import して公開面を検証する）
     - `AC-5a: q="react" page=2 のとき /search/repositories に q=react・page=2・per_page=30 を付けて呼び、sort と order を付けない`（呼び出し URL を `new URL()` で分解して検証）
