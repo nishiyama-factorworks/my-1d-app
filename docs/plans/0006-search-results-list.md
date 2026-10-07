@@ -136,7 +136,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `features/search/lib/repo-path.ts`、`features/search/lib/repo-path.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: 検索結果一覧コンポーネント**
+- [x] **T3: 検索結果一覧コンポーネント**
   - 対応 AC: AC-6a、AC-6b、AC-7、AC-5、AC-10（コンポーネント単位）、仕様 6.1（0件）
   - 先に書くテスト: `features/search/components/search-results.test.tsx`（jsdom。モックなし。フィクスチャは `Array.from({ length: n }, (_, i) => ({ fullName: \`owner${i}/repo${i}\`, ownerLogin: \`owner${i}\`, ownerAvatarUrl: \`https://avatars.githubusercontent.com/u/${i}?v=4\` }))` を作る関数をテストファイル内に置く）
     - `AC-6a: 30件のとき30行が表示され、各行にオーナー名の代替テキストのアイコンと owner/repo のリンクが1つずつある`（`within(getByRole("list")).getAllByRole("listitem")` が 30。各 `li` で `within(li).getByRole("img", { name: \`owner${i}\` })`、`within(li).getAllByRole("link")` が 1 件で名前が `owner${i}/repo${i}` と完全一致）
