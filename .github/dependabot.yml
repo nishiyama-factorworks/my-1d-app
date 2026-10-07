@@ -1,0 +1,23 @@
+# 依存関係の更新を PR として受ける（Claude が勝手に依存を更新しない代わりの仕組み）。
+# package-ecosystem: npm は pnpm / yarn のロックファイルにも対応する。
+# 編集方法: docs/harness/MANUAL.md 10章を参照。
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci(deps)"

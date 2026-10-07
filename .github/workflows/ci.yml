@@ -1,0 +1,72 @@
+name: CI
+
+# 品質ゲートを「人にも AI にも回避できない最終防衛線」として PR で強制する。
+# 実行内容は scripts/verify.sh（= .claude/harness.env の *_CMD）と同一。
+# 編集方法: docs/harness/MANUAL.md 4.12 を参照。
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness-lint:
+    # ハーネス自体（設定ファイルとスクリプト）が壊れていないか
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: settings.json が妥当な JSON か
+        run: jq empty .claude/settings.json
+      - name: シェルスクリプトの構文チェック
+        run: |
+          for f in .claude/hooks/*.sh scripts/*.sh; do
+            echo "bash -n $f"; bash -n "$f"
+          done
+      - name: shellcheck（警告レベル）
+        run: shellcheck --severity=warning .claude/hooks/*.sh scripts/*.sh
+
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm を使う場合。package.json に "packageManager": "pnpm@x.y.z" を設定しておくこと。
+      # npm / yarn に変える場合は、この step を削除し setup-node の cache を npm / yarn に変更する。
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22        # プロジェクトの Node バージョンに合わせる（.nvmrc を使うなら node-version-file: .nvmrc）
+          cache: pnpm
+
+      - name: 依存関係のインストール
+        run: pnpm install --frozen-lockfile   # harness.env の INSTALL_CMD と揃える
+
+      - name: 品質ゲート（型チェック・Lint・テスト・ビルド）
+        run: bash scripts/verify.sh --full
+
+  e2e:
+    # 既定では無効。リポジトリ変数 RUN_E2E を 'true' にすると有効になる（Settings > Variables）。
+    if: ${{ vars.RUN_E2E == 'true' }}
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: E2E
+        run: pnpm test:e2e

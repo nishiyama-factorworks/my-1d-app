@@ -1,0 +1,51 @@
+name: 機能・改善（AI 開発タスク）
+description: 新機能や改善の要望。Issue 番号を `/feature <番号>` に渡すと、Claude Code が仕様作成から開発を始める
+title: "[feat] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        この Issue は AI（Claude Code）が読んで開発を始めます。**分からない項目は空欄にせず「未決」と書いてください**（AI は推測で埋めず、質問します）。
+        シークレット・個人情報は書かないでください。
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的
+      description: 誰の、どんな課題を解くための機能か
+      placeholder: "例: 利用者がタスクを一覧で管理できるようにする"
+    validations:
+      required: true
+  - type: textarea
+    id: request
+    attributes:
+      label: 要望（やりたいこと）
+      description: 機能の説明。分かる範囲で、操作と期待する結果（受け入れ条件の素案）を書く
+      placeholder: "例: タスクを追加・完了・削除できる。完了したタスクは取り消し線で表示する"
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: 範囲外（やらないこと）
+      description: 今回は対象にしないこと。書いておくと AI が先走らない
+      placeholder: "例: ログイン機能、複数ユーザー対応"
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 制約・参考情報
+      description: 関連する仕様 / ADR / 画面イメージ、使ってよい・いけないライブラリ、期限など
+    validations:
+      required: false
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: 完了の定義（すべて満たしたら完了）
+      options:
+        - label: "`docs/specs/` に承認済みの仕様がある"
+        - label: すべての受け入れ条件にテストがある
+        - label: "`bash scripts/verify.sh` が全 PASS"
+        - label: レビュー（reviewer / security-reviewer）に Critical・Major の指摘が残っていない
+        - label: PR の CI が全て成功している

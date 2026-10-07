@@ -1,0 +1,57 @@
+name: バグ報告
+description: 不具合の報告。Issue 番号を `/fix <番号>` に渡すと、Claude Code が再現テストの作成から始める
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        再現できる情報が多いほど、AI が正確に原因を特定できます。分からない項目は「不明」と書いてください。
+        シークレット・個人情報（トークン、メールアドレス等）はログやスクリーンショットから除いてください。
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 症状
+      description: 何が起きたか
+      placeholder: "例: 完了にしたタスクが、ページを再読み込みすると未完了に戻る"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 番号付きで、誰でも同じ結果になる粒度で
+      placeholder: |
+        1. タスクを 1 件追加する
+        2. 完了にする
+        3. ページを再読み込みする
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作（エラーメッセージ・ログ）
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: env
+    attributes:
+      label: 環境
+      description: ブラウザ、OS、ブランチ / コミット
+      placeholder: "例: Chrome 130 / macOS / main@abc1234"
+    validations:
+      required: false
+  - type: textarea
+    id: spec
+    attributes:
+      label: 関連する仕様（分かれば）
+      description: "`docs/specs/` のファイルや AC 番号"
+    validations:
+      required: false
