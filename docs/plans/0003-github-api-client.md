@@ -224,7 +224,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 手順: `bash scripts/verify.sh` を実行し、PASS/FAIL を事実のまま進捗メモに記録。`Status` を更新する。
   - 完了条件: `verify.sh`（full）PASS。
 
-- [ ] **T5b: 入力検証（AC-5c・AC-5d・AC-13c。Q1〜Q3 の採用により追加）**
+- [x] **T5b: 入力検証（AC-5c・AC-5d・AC-13c。Q1〜Q3 の採用により追加）**
   - 対応 AC: AC-5c、AC-5d、AC-13c
   - 先に書くテスト: `lib/github/client.test.ts` に追記（`fetch` のモックが**呼ばれない**ことを検証）
     - `AC-5c: q が空文字・空白のみのとき fetch を呼ばずに VALIDATION で失敗する`

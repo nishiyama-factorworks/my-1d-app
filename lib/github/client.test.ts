@@ -320,3 +320,130 @@ describe("失敗の分類", () => {
     },
   );
 });
+
+describe("入力検証（searchRepositories）", () => {
+  async function expectValidation(
+    params: Parameters<typeof searchRepositories>[0],
+  ) {
+    const mock = stubFetch(() => jsonResponse(searchBody()));
+
+    const e = await catchError(searchRepositories(params));
+
+    expect(isGitHubApiError(e)).toBe(true);
+    if (isGitHubApiError(e)) expect(e.kind).toBe("VALIDATION");
+    expect(mock).not.toHaveBeenCalled();
+  }
+
+  it.each([
+    ["空文字", ""],
+    ["空白のみ", "   "],
+    ["全角空白とタブのみ", "\u3000\t "],
+  ])(
+    "AC-5c: q が%sのとき fetch を呼ばず VALIDATION で失敗する",
+    async (_label, q) => {
+      await expectValidation({ q });
+    },
+  );
+
+  it.each([
+    ["0", 0],
+    ["負数", -1],
+    ["小数", 1.5],
+    ["NaN", Number.NaN],
+  ])(
+    "AC-5d: page が%sのとき fetch を呼ばず VALIDATION で失敗する",
+    async (_label, page) => {
+      await expectValidation({ q: "react", page });
+    },
+  );
+
+  it.each([
+    ["0", 0],
+    ["101", 101],
+    ["小数", 1.5],
+  ])(
+    "AC-5d: perPage が%sのとき fetch を呼ばず VALIDATION で失敗する",
+    async (_label, perPage) => {
+      await expectValidation({ q: "react", perPage });
+    },
+  );
+
+  it.each([1, 100])(
+    "AC-5d: perPage が境界値 %i のとき fetch を呼び、per_page に反映して成功する",
+    async (perPage) => {
+      const mock = stubFetch(() => jsonResponse(searchBody()));
+
+      await searchRepositories({ q: "react", perPage });
+
+      expect(mock).toHaveBeenCalledTimes(1);
+      expect(calledUrl(mock).searchParams.get("per_page")).toBe(
+        String(perPage),
+      );
+    },
+  );
+
+  it("AC-5d: page が境界値 1 のとき fetch を呼んで成功する", async () => {
+    const mock = stubFetch(() => jsonResponse(searchBody()));
+
+    await searchRepositories({ q: "react", page: 1 });
+
+    expect(mock).toHaveBeenCalledTimes(1);
+    expect(calledUrl(mock).searchParams.get("page")).toBe("1");
+  });
+});
+
+describe("入力検証（getRepository）", () => {
+  const validOwner = "vercel";
+  const validRepo = "next.js";
+
+  async function expectNotFound(owner: string, repo: string) {
+    const mock = stubFetch(() => jsonResponse(repoBody()));
+
+    const e = await catchError(getRepository(owner, repo));
+
+    expect(isGitHubApiError(e)).toBe(true);
+    if (isGitHubApiError(e)) expect(e.kind).toBe("NOT_FOUND");
+    expect(mock).not.toHaveBeenCalled();
+  }
+
+  it.each([
+    ["空文字", ""],
+    ["40文字", "a".repeat(40)],
+    ["記号を含む", "ver$cel"],
+    ["スラッシュを含む", "ver/cel"],
+  ])(
+    "AC-13c: owner が%sのとき fetch を呼ばず NOT_FOUND で失敗する",
+    async (_label, owner) => {
+      await expectNotFound(owner, validRepo);
+    },
+  );
+
+  it.each([
+    ["空文字", ""],
+    ["101文字", "a".repeat(101)],
+    ["スラッシュを含む", "next/js"],
+    ["ドット1つ", "."],
+    ["ドット2つ", ".."],
+  ])(
+    "AC-13c: repo が%sのとき fetch を呼ばず NOT_FOUND で失敗する",
+    async (_label, repo) => {
+      await expectNotFound(validOwner, repo);
+    },
+  );
+
+  it.each([
+    ["vercel", "next.js"],
+    ["my-org", "my_repo"],
+    ["a".repeat(39), "repo"],
+    ["vercel", "a".repeat(100)],
+  ])(
+    "AC-13c: 有効な owner=%s repo=%s のとき fetch を呼んで成功する",
+    async (owner, repo) => {
+      const mock = stubFetch(() => jsonResponse(repoBody()));
+
+      await expect(getRepository(owner, repo)).resolves.toBeDefined();
+
+      expect(mock).toHaveBeenCalledTimes(1);
+    },
+  );
+});

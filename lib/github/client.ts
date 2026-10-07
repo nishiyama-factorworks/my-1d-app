@@ -1,5 +1,6 @@
 import "server-only";
 
+import { GitHubApiError } from "./errors";
 import { githubGet } from "./http";
 import { mapRepositoryResponse, mapSearchResponse } from "./mappers";
 import type {
@@ -11,11 +12,25 @@ import type {
 const DEFAULT_PAGE = 1;
 const DEFAULT_PER_PAGE = 30;
 
+const OWNER_PATTERN = /^[A-Za-z0-9-]{1,39}$/;
+const REPO_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
+const MAX_PER_PAGE = 100;
+
 export async function searchRepositories({
   q,
   page = DEFAULT_PAGE,
   perPage = DEFAULT_PER_PAGE,
 }: SearchRepositoriesParams): Promise<SearchRepositoriesResult> {
+  if (
+    q.trim() === "" ||
+    !Number.isInteger(page) ||
+    page < 1 ||
+    !Number.isInteger(perPage) ||
+    perPage < 1 ||
+    perPage > MAX_PER_PAGE
+  ) {
+    throw new GitHubApiError("VALIDATION");
+  }
   const json = await githubGet("search", "/search/repositories", {
     q,
     page: String(page),
@@ -28,6 +43,14 @@ export async function getRepository(
   owner: string,
   repo: string,
 ): Promise<RepoDetail> {
+  if (
+    !OWNER_PATTERN.test(owner) ||
+    !REPO_PATTERN.test(repo) ||
+    repo === "." ||
+    repo === ".."
+  ) {
+    throw new GitHubApiError("NOT_FOUND");
+  }
   const json = await githubGet(
     "repo",
     `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
