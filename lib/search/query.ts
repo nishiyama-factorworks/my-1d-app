@@ -10,6 +10,7 @@ function firstValue(
 ): string | undefined {
   const value = params[key];
   if (Array.isArray(value)) {
+    // noUncheckedIndexedAccess が無効で value[0] は string と推論されるが、空配列では undefined になる。
     const first: string | undefined = value[0];
     return first;
   }

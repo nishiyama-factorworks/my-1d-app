@@ -26,6 +26,7 @@ describe("normalizeKeyword", () => {
 describe("parseSearchParams", () => {
   it.each([
     { label: "キー無し", params: {} },
+    { label: "undefined", params: { page: undefined } },
     { label: '"abc"', params: { page: "abc" } },
     { label: '"0"', params: { page: "0" } },
     { label: '"-3"', params: { page: "-3" } },
@@ -48,11 +49,16 @@ describe("parseSearchParams", () => {
   });
 
   it("AC-25k: page が MAX_SAFE_INTEGER ちょうどのときそのまま採用される", () => {
-    expect(parseSearchParams({ page: "9007199254740991" }).page).toBe(9007199254740991);
+    expect(parseSearchParams({ page: "9007199254740991" }).page).toBe(
+      9007199254740991,
+    );
   });
 
   it('AC-25d: page="3"、q="react" のとき page=3、q="react" になる', () => {
-    expect(parseSearchParams({ q: "react", page: "3" })).toEqual({ q: "react", page: 3 });
+    expect(parseSearchParams({ q: "react", page: "3" })).toEqual({
+      q: "react",
+      page: 3,
+    });
   });
 
   it('AC-25d: page="35" のとき切り詰められず 35 になる', () => {
@@ -70,16 +76,22 @@ describe("parseSearchParams", () => {
   it.each([
     { label: '["2","5"]', page: ["2", "5"], expected: 2 },
     { label: '["abc","5"]', page: ["abc", "5"], expected: 1 },
-    { label: "[]", page: [] as string[], expected: 1 },
-  ])("AC-25l: page が配列 $label のとき $expected になる", ({ page, expected }) => {
-    expect(parseSearchParams({ page }).page).toBe(expected);
-  });
+    { label: "[]", page: new Array<string>(), expected: 1 },
+  ])(
+    "AC-25l: page が配列 $label のとき $expected になる",
+    ({ page, expected }) => {
+      expect(parseSearchParams({ page }).page).toBe(expected);
+    },
+  );
 
   it('AC-25a: q が前後空白付き "  react  " のとき "react" に正規化される', () => {
     expect(parseSearchParams({ q: "  react  " }).q).toBe("react");
   });
 
-  it("AC-25b: q が空白のみのとき null になる", () => {
-    expect(parseSearchParams({ q: "   " }).q).toBeNull();
+  it.each([
+    { label: "半角空白のみ", q: "   " },
+    { label: "全角空白のみ（U+3000）", q: "　" },
+  ])("AC-25b: q が $label のとき null になる", ({ q }) => {
+    expect(parseSearchParams({ q }).q).toBeNull();
   });
 });

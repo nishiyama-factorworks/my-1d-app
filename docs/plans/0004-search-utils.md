@@ -1,6 +1,6 @@
 # 0004: 検索ユーティリティ（純粋関数群） 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #4
 - 対応する仕様: docs/specs/0004-search-utils.md
@@ -9,7 +9,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 ## 1. 方針
 
-- 仕様 5節の AC-25a〜AC-25k を、**副作用のない純粋関数**として `lib/search/` に実装する。依存パッケージは追加しない（zod も使わない。入力は「文字列か、文字列の配列か、未指定」の3通りしかなく、正規表現と標準 API で判定できるため）。
+- 仕様 5節の AC-25a〜AC-25l を、**副作用のない純粋関数**として `lib/search/` に実装する。依存パッケージは追加しない（zod も使わない。入力は「文字列か、文字列の配列か、未指定」の3通りしかなく、正規表現と標準 API で判定できるため）。
 - サーバー（Server Component）からもクライアント（0005 のフォーム）からも読み込めるように、`server-only`・`"use client"`・Node 専用 API・DOM API・`Intl`／`toLocaleString` を使わない。
 - 0003 の `lib/github/`（PR #18、未マージ・別ブランチ）には**依存しない**。0003 は `server-only`（0003 AC-23c）なので、もし 0004 が `lib/github/` から定数を読み込むと、0004 の関数をクライアントで使えなくなる。向きは「`lib/github/` → `lib/search/constants.ts`」が正しい（後述の提案 P1）。
   - なお、この計画を作った環境では `feat/3-github-api-client` ブランチの中身を読めなかった（Bash を使えないため git オブジェクトを展開できなかった）。0003 の命名・スタイル（`camelCase` の関数名、`UPPER_SNAKE_CASE` の定数、名前付き export）は、仕様 0003 と `.claude/rules/20-typescript.md` を基に揃えている。実装に入る前に、`git show feat/3-github-api-client:lib/github/<ファイル>` で 0003 の命名を確認し、ずれがあれば合わせる（T1 の作業前確認）。
@@ -29,7 +29,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 | `query.ts` | `normalizeKeyword` | `(input: string) => string \| null` | AC-25a, 25b | 0005（送信時） |
 | `query.ts` | `SearchParamsInput`（型） | `Readonly<Record<string, string \| string[] \| undefined>>` | AC-25c〜e, 25k | 0005, 0006, 0009 |
 | `query.ts` | `SearchQuery`（型） | `{ q: string \| null; page: number }` | 同上 | 同上 |
-| `query.ts` | `parseSearchParams` | `(params: SearchParamsInput) => SearchQuery` | AC-25c, 25d, 25e, 25k（AC-25a/b を内部で利用） | 0005（AC-22c の初期値）、0006（AC-4）、0009（AC-15c） |
+| `query.ts` | `parseSearchParams` | `(params: SearchParamsInput) => SearchQuery` | AC-25c, 25d, 25e, 25k, 25l（AC-25a/b を内部で利用） | 0005（AC-22c の初期値）、0006（AC-4）、0009（AC-15c） |
 | `format.ts` | `formatNumber` | `(value: number) => string` | AC-25g | 0006（AC-7）、0008（AC-14a） |
 | `format.ts` | `formatLanguage` | `(language: string \| null) => string` | AC-25h | 0008（AC-14b） |
 | `paths.ts` | `buildSearchPath` | `(q: string, page: number) => string` | AC-25i | 0005（AC-2, 22b）、0007（AC-8f, 9b, 9c）、0009（AC-15a, 15c） |
@@ -103,7 +103,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 | --- | --- | --- |
 | 新規 | `lib/search/constants.ts` | `SEARCH_PER_PAGE`、`SEARCH_RESULT_LIMIT` |
 | 新規 | `lib/search/pagination.ts` / `pagination.test.ts` | `calculateMaxPage`（AC-25f） |
-| 新規 | `lib/search/query.ts` / `query.test.ts` | `normalizeKeyword`、`parseSearchParams`、型 `SearchParamsInput` `SearchQuery`（AC-25a〜e, 25k） |
+| 新規 | `lib/search/query.ts` / `query.test.ts` | `normalizeKeyword`、`parseSearchParams`、型 `SearchParamsInput` `SearchQuery`（AC-25a〜e, 25k, 25l） |
 | 新規 | `lib/search/format.ts` / `format.test.ts` | `formatNumber`、`formatLanguage`（AC-25g, 25h） |
 | 新規 | `lib/search/paths.ts` / `paths.test.ts` | `buildSearchPath`、`buildRepoPath`（AC-25i, 25j） |
 | 変更 | `docs/specs/0004-search-utils.md` | 9節「関数名・ファイル配置」の未決事項を、承認された計画の内容で解決済みにする。変更履歴に追記 |
@@ -178,7 +178,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `lib/search/paths.ts`、`lib/search/paths.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T7: 仕様の未決事項の解決と最終確認**
+- [x] **T7: 仕様の未決事項の解決と最終確認**
   - 対応 AC: なし（仕様 9節「関数名・ファイル配置 / 期限: 計画承認時」）
   - 先に書くテスト: なし（文書のみ）
   - 実装対象: `docs/specs/0004-search-utils.md`（9節の該当行を `[x]` にし、確定した配置と関数名を1行で書く。10節の変更履歴に追記）、本計画の進捗メモ（2 ファイル）
@@ -254,3 +254,6 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 - 2026-10-07: 計画作成（draft）。未着手。次は人間の承認後に T1 から開始する。T1 の前に `feat/3-github-api-client` の `lib/github/` の命名を確認する。
 - 2026-10-07: 人間が推奨どおりで承認（Status: in-progress）。決定事項: Q1 すべて `lib/search/`／Q2 `page` が複数なら最初の要素を使う → 仕様に AC-25l を追加／Q3 `buildRepoPath` の `.`・`..` は扱わない／Q4 `calculateMaxPage` の不正な総件数は定めない・テストしない（人間が理由を確認のうえ現状どおりと決定。0003 の `num` は非負の整数までは検証していない点を承知）／Q5 `formatLanguage` の空白だけの文字列はそのまま返す／Q6 `buildSearchPath` は不正な `page` を補正しない／Q7 数値整形は `Intl` を使わない案 A／Q8 P1（0003 の定数との一本化）は別 Issue、P2（0008 への申し送り）は採用して 0008 の計画時に確認。`/issue split` はせず 1 PR で進める。
+- 2026-10-07: T1 の作業前確認: `git show feat/3-github-api-client:lib/github/client.ts` で 0003 の命名を確認し、camelCase の関数・UPPER_SNAKE_CASE の定数・名前付き export で一致（0003 の `DEFAULT_PER_PAGE=30` は非公開）。ずれなし。
+- 2026-10-07: RED / GREEN の記録（レビュー指摘による追記）。T1: `calculateMaxPage` を常に 0 を返す仮実装にして 8 件中 6 件が期待値の不一致で失敗 → 式を実装して GREEN。T2: 入力をそのまま返す仮実装で 7 件すべて失敗 → `trim()` で GREEN。T3: 常に `{ q: null, page: 1 }` を返す仮実装で 31 件中 6 件が失敗（`page="3"`、`page="35"`、`q=["a","b"]`、`page=["2","5"]`、`q` の正規化、`MAX_SAFE_INTEGER` ちょうど）→ GREEN。T4: `String(value)` と `language ?? ""` の仮実装で 9 件中 6 件が失敗 → GREEN。T5: 常に `"/"` を返す仮実装で 10 件すべて失敗 → GREEN。T6: 符号化しない仮実装で 18 件中 7 件が失敗（特殊文字の表 6 行と外部 URL 形式 1 件）→ GREEN。いずれも期待値の不一致で、インポート・構文エラーではない。
+- 2026-10-07: レビュー（reviewer: Approve / security-reviewer: Critical・High・Medium なし）。対応: Major（RED の記録）、Minor（`query.test.ts` の整形、計画本文への AC-25l の反映、全角空白を `parseSearchParams` 経由で検証、`{ page: undefined }` の行、テスト中の `as` の除去、`query.ts` のコメント）。扱わない（人間の決定済みの Q3・Q4・Q6 などに当たる、または仕様に無い要件）: `.`・`..` セグメント（Q3）、`q` の長さ上限（仕様 9 節）、小数部の桁区切り（仕様の前提は整数のみ）、`buildSearchPath` の `page` 検証（Q6）。申し送り（仕様に無い要件のため扱っていない。必要なら AC を足して対応）: 片割れのサロゲート文字を `buildRepoPath` に渡すと `URIError`（URL クエリ経由では Next が置換するので起きない）、ゼロ幅スペース（U+200B）は `trim()` で取れず見た目が空の入力が空と判定されない。0007 の計画への申し送り: `calculateMaxPage(0) === 0` なので、0 件は範囲外判定より先に処理する（0010 の「結果なし」表示）。
