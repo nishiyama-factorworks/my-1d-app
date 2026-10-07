@@ -201,7 +201,7 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
   - 実装対象: `features/search/components/search-results.tsx`、`features/search/components/search-results.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: トップページでの範囲外の判定とページネーションの組み込み**
+- [x] **T5: トップページでの範囲外の判定とページネーションの組み込み**
   - 対応 AC: AC-8a・AC-8d・AC-9a・AC-9b・AC-9c・AC-9d（ページ単位）、既存（0002 AC-21b、0005 AC-1・AC-22c、0006 AC-4a・AC-4b・仕様 6.1）の維持
   - 先に書くテスト: `app/page.test.tsx` に追加（モック・`renderPage` は既存のものを使う。ページネーションは `within(getByRole("navigation", { name: "ページネーション" }))` で絞る）
     - `AC-8a: 総件数 100・/?q=react&page=2 のとき、一覧の下にページネーションが表示され、2 に aria-current="page" が付く`
@@ -321,3 +321,4 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
   - 0011: 範囲外の案内の `role="status"`（AC-26d・提案 P1）、ページ移動後のスクロール・フォーカス（AC-26b・提案 P2）、番号のリンク名（提案 P4）、フォーカスの見た目と 320px での押しやすさ（AC-27）。
 - 2026-10-08: 人間が推奨どおりで承認（Status: in-progress）。決定事項: Q1 押せない「前へ」「次へ」は `<span role="link" aria-disabled="true">`（`href`・`tabindex` なし。MDN の `aria-disabled` の対応ロールに `link` が含まれることを確認。仕様 6.1 の文言を更新済み）／Q2 現在ページの番号もリンクにして `aria-current="page"`／Q3 番号リンクの名前は数字だけ／Q4 注記は `SearchResults` の総件数の直後／Q5 純粋関数は `features/search/lib/`／Q6 前提外の入力は決めない・テストしない／Q7 範囲外でも `h1` は残す／Q8 「…」は文字として表示（`aria-hidden` なし）／Q9 提案 P1〜P5 は採らない。`/issue split` はせず 1 PR で進める。
 - 2026-10-08: T4 の検出力確認。注記の条件を `totalCount > SEARCH_RESULT_LIMIT` から `>=` に一時的に変えると、「総件数が 1000 のとき注記を表示しない」だけが失敗した（復元済み）。
+- 2026-10-08: T5 の検出力確認。比較演算子の変異を 3 通り試し、いずれも対応する境界のテストが失敗した（復元済み）。(1) 前段 `page > calculateMaxPage(SEARCH_RESULT_LIMIT)` を `>=` → AC-9b の `page=34`、(2) 後段 `page > maxPage` を `>=` → AC-9b の `page=34` と AC-9c の総件数 50・`page=2`、(3) `totalCount >= 1` を外す → AC-9d。
