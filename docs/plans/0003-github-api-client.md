@@ -254,6 +254,15 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/client.ts`、`.env.example`（コメントに「公開リポジトリの読み取り専用トークンに限る」を追記。コメントに `KEY=` 形式を書かない。`tests/foundation/env-files.test.ts` で検査される）
   - 完了条件: `pnpm test` PASS。
 
+- [ ] **T12: 再レビュー指摘の対応（AC-5f・5g・13d・13e の改定、AC-24f の補強、cancel を待たない）**
+  - 先に書くテスト:
+    - `lib/github/mappers.test.ts`: `private` が欠落・文字列・`visibility: "private"/"internal"` のとき、検索では除外・詳細では `NOT_FOUND`。`private: false` で `visibility` が無い/`public` は成功（「private 未設定は成功」の旧テストは仕様変更により書き換える）。`avatar_url` は `raw.githubusercontent.com`、`user-images.githubusercontent.com` など `avatars.githubusercontent.com` 以外を `UPSTREAM`。userinfo・ポート付き（`https://u:p@avatars.githubusercontent.com/..`、`:8443`）を `UPSTREAM`。成功時は正規化後の URL（`url.href`）を返す（例: 大文字ホストが小文字になる）。
+    - `lib/github/errors.test.ts`: `x-ratelimit-reset` が `"9000000000000"`（安全な整数だが `Invalid Date` になる）のとき `resetAt` が `undefined`。
+    - `lib/github/http.test.ts`: エラー応答で `cancel()` が永久に解決しない本文でも、`githubGet` が `RATE_LIMIT` で速やかに失敗する（cancel を待たない）。
+    - `lib/github/client.test.ts`: AC-5e の「空白で埋まった 257 文字」を「英字 1 文字 + 空白 256 文字」に変える（空判定と区別するため）。
+  - 実装対象: `lib/github/mappers.ts`、`lib/github/http.ts`（`void res.body?.cancel().catch(() => {})`。cancel の失敗は元の HTTP エラーを優先するため無視する旨のコメント）、テスト 4 ファイル
+  - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh` PASS。
+
 ## 4. テスト方針
 
 | 種類 | 対象 | ファイル | 環境 |
@@ -288,7 +297,14 @@ AC と検証手段の対応:
 | AC-24b | `errors.test.ts`、`client.test.ts` | T2, T5 |
 | AC-24c | `errors.test.ts`、`client.test.ts` | T2, T5 |
 | AC-24d | `errors.test.ts`、`mappers.test.ts`（想定外の形）、`http.test.ts`（JSON でない本文）、`client.test.ts` | T2〜T5 |
-| AC-24e | `http.test.ts`（接続失敗・10秒のタイムアウト）、`client.test.ts` | T4, T5 |
+| AC-24e | `http.test.ts`（接続失敗・10秒のタイムアウト・本文読み取り中のタイムアウト）、`client.test.ts`（接続失敗・公開面のタイムアウト） | T4, T5 |
+| AC-5c / AC-5d | `client.test.ts`（`fetch` が呼ばれないこと） | T5b |
+| AC-5e | `client.test.ts`（257 文字で `VALIDATION`、256 文字は成功） | T11, T12 |
+| AC-5f / AC-13d | `mappers.test.ts`（公開と確認できないものの除外・`NOT_FOUND`） | T10, T12 |
+| AC-5g / AC-13e | `mappers.test.ts`（URL の https・ホスト・userinfo・ポート） | T10, T12 |
+| AC-13c | `client.test.ts`（owner / repo の許可リスト） | T5b |
+| AC-23e | `http.test.ts`（別オリジンに解決されるパスを `fetch` 前に拒否。公開関数からは到達しない多層防御） | T9 |
+| AC-24f | `errors.test.ts`（巨大な値・`Invalid Date` になる値で `resetAt` なし） | T9, T12 |
 
 ## 5. リスクと対策
 
@@ -340,3 +356,6 @@ AC と検証手段の対応:
 - 2026-10-07: RED / GREEN の記録（レビュー指摘による追記）。T2: 仮実装（常に UPSTREAM）で 13 件中 7 件が期待値の不一致で失敗 → 分類を実装して GREEN。T3: 仮実装（空の値）で 25 件中 22 件が失敗 → 型ガードで変換して GREEN。T4: 仮実装（not implemented）で 10 件が失敗 → GREEN。T5: 仮実装で 28 件が失敗 → GREEN。T5b: 検証なしの実装で 19 件が失敗（不正な入力でも fetch が呼ばれる）→ 検証を追加して GREEN。
 - 2026-10-07: Q1〜Q8 は回答済み（推奨どおり）。Q3 のとおり許可リストは AC-13c として仕様に追加済み。
 - 2026-10-07: レビュー（reviewer / security-reviewer、Critical・High 無し）の指摘を人間が採用し、仕様に AC-5e〜5g・13d・13e・23e・24f を追加。タスク T9〜T11 を追加した。private リポジトリの漏えい（Medium）は「文書化 + 実装で防御」。0010 の計画時に、エラーは種別の判定をサーバ側で行い Client には表示用の値として渡す（`error.tsx` に届くエラーはシリアライズされ `instanceof` が使えない見込み。Next.js 公式ドキュメントで未確認）ことを確認する。
+- 2026-10-07: T9〜T11 の RED / GREEN の記録（再レビューの指摘による追記）。T9: テスト追加後に 149 件中 5 件が失敗（`//evil.example/x` などで fetch が呼ばれる 3 件、エラー本文の cancel が呼ばれない 1 件、巨大な `x-ratelimit-reset` で Invalid Date の 1 件。いずれも期待値の不一致）→ GREEN。T10: `private` の除外・URL 検証の追加テストで 19 件が失敗（例外が投げられない、除外されない）→ GREEN。T11: 257 文字の `q` で fetch まで進み 1 件が失敗 → GREEN。
+- 2026-10-07: `6152c91` で追加した AC-23b（本当の未設定）と公開面の AC-24e（タイムアウト）のテストは、実装の後から書いた特性テストで RED を経ていない（reviewer の指摘による補強）。代わりに、本番コードを一時的に壊す検出力確認を実施した（`TIMEOUT_MS` を 60 秒にすると AC-24e の 2 件が失敗、`buildHeaders` の条件を常に真にすると AC-23b の 4 件が失敗。いずれも復元済み）。
+- 2026-10-07: セキュリティ再レビューの指摘（Critical・High 無し）。Medium: `private` 判定の fail-safe 化、Low: avatar ホストの限定・URL の正規化と userinfo/ポートの拒否・cancel を待たない。人間がすべて採用し、仕様の AC-5f・5g・13d・13e を改定、タスク T12 を追加した。
