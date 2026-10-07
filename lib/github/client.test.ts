@@ -60,6 +60,7 @@ function searchBody(count = 30, totalCount = 1234) {
     items: Array.from({ length: count }, (_, i) => ({
       id: i + 1,
       full_name: `owner${i}/repo${i}`,
+      private: false,
       owner: {
         login: `owner${i}`,
         avatar_url: `https://avatars.githubusercontent.com/u/${i}`,
@@ -72,6 +73,7 @@ function repoBody(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
     full_name: "vercel/next.js",
+    private: false,
     owner: {
       login: "vercel",
       avatar_url: "https://avatars.githubusercontent.com/u/14985020",
@@ -418,7 +420,7 @@ describe("入力検証（searchRepositories）", () => {
 
   it.each([
     ["英字257文字", "a".repeat(257)],
-    ["空白で埋まった257文字", " ".repeat(257)],
+    ["英字1文字と空白256文字の257文字", `a${" ".repeat(256)}`],
   ])(
     "AC-5e: q が%sのとき fetch を呼ばず VALIDATION で失敗する",
     async (_label, q) => {

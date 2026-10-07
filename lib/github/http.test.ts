@@ -156,6 +156,28 @@ describe("githubGet: 失敗の分類", () => {
     expect(cancelled).toBe(true);
   });
 
+  it("非機能: エラー応答の本文の cancel が永久に解決しなくても、待たずに RATE_LIMIT で失敗する", async () => {
+    stubFetch(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            cancel() {
+              return new Promise(() => {});
+            },
+          }),
+          { status: 429 },
+        ),
+    );
+
+    const outcome = await Promise.race([
+      catchError(githubGet("search", "/search/repositories")),
+      new Promise<string>((resolve) => setTimeout(() => resolve("HUNG"), 500)),
+    ]);
+
+    expect(outcome).not.toBe("HUNG");
+    expect(outcome).toMatchObject({ kind: "RATE_LIMIT" });
+  });
+
   it("AC-24e: fetch が TypeError で失敗したとき NETWORK になる", async () => {
     stubFetch(async () => {
       throw new TypeError("fetch failed");

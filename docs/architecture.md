@@ -40,6 +40,7 @@
 
 - Server / Client の境界: トークン（`GITHUB_TOKEN`）を扱うモジュール（`lib/github/http.ts` `client.ts`）は先頭で `import "server-only"` とし、Client Component から読み込むとビルドで失敗させる。型とエラー定義（`types.ts` `errors.ts`）は Client からも import できる
 - GitHub API のエラー: `GitHubApiError`（`kind`: `RATE_LIMIT` `NOT_FOUND` `VALIDATION` `UPSTREAM` `NETWORK`、`status`、`resetAt`）を throw する。メッセージは種別ごとの固定文言で、トークン・URL・レスポンス本文を含めない
+- GitHub API 層の防御策: 宛先オリジンは `api.github.com` に固定。公開と確認できないリポジトリは返さない。レスポンスの `avatar_url` / `html_url` は https かつ GitHub のホストのみ許可する
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
 - 認証・認可: <方針>
 - エラー形式（Route Handler の応答）: `{ error: { code, message } }`。GitHub API 層のエラーは上の `GitHubApiError`

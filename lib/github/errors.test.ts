@@ -57,6 +57,14 @@ describe("classifyHttpError", () => {
     expect(huge.kind).toBe("RATE_LIMIT");
     expect(huge.resetAt).toBeUndefined();
 
+    const invalidDate = classifyHttpError(
+      429,
+      new Headers({ "x-ratelimit-reset": "9000000000000" }),
+      "search",
+    );
+    expect(invalidDate.kind).toBe("RATE_LIMIT");
+    expect(invalidDate.resetAt).toBeUndefined();
+
     const normal = classifyHttpError(
       429,
       new Headers({ "x-ratelimit-reset": "1700000000" }),

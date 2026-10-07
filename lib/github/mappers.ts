@@ -41,16 +41,25 @@ function parseHttpsUrl(value: string): URL {
   }
 }
 
-// 似せたホスト（evilgithubusercontent.com 等）を通さないよう、完全一致かサブドメインのみ許可する。
-function safeUrl(value: string, host: string, allowSubdomain: boolean): string {
-  const hostname = parseHttpsUrl(value).hostname;
+// 似せたホストやサブドメインを通さないよう、ホスト名の完全一致のみ許可する。
+// 認証情報・ポート付きは拒否し、検証後の正規化済み href を返す。
+function safeUrl(value: string, host: string): string {
+  const url = parseHttpsUrl(value);
   const ok =
-    hostname === host || (allowSubdomain && hostname.endsWith(`.${host}`));
-  return ok ? value : fail();
+    url.hostname === host &&
+    url.username === "" &&
+    url.password === "" &&
+    url.port === "";
+  return ok ? url.href : fail();
 }
 
-function isPrivate(item: unknown): boolean {
-  return isRecord(item) && item.private === true;
+// 公開と確認できたものだけを公開扱いにする（安全側に倒す）。
+function isPublic(item: unknown): boolean {
+  return (
+    isRecord(item) &&
+    item.private === false &&
+    (item.visibility === undefined || item.visibility === "public")
+  );
 }
 
 function mapSummary(item: unknown): RepoSummary {
@@ -61,8 +70,7 @@ function mapSummary(item: unknown): RepoSummary {
     ownerLogin: str(owner, "login"),
     ownerAvatarUrl: safeUrl(
       str(owner, "avatar_url"),
-      "githubusercontent.com",
-      true,
+      "avatars.githubusercontent.com",
     ),
   };
 }
@@ -73,22 +81,24 @@ export function mapSearchResponse(json: unknown): SearchRepositoriesResult {
   if (!Array.isArray(items)) return fail();
   return {
     totalCount: num(json, "total_count"),
-    items: items.filter((item) => !isPrivate(item)).map(mapSummary),
+    items: items.filter(isPublic).map(mapSummary),
   };
 }
 
 export function mapRepositoryResponse(json: unknown): RepoDetail {
   if (!isRecord(json)) return fail();
-  if (isPrivate(json)) throw new GitHubApiError("NOT_FOUND");
   const language = json.language;
   if (language !== null && typeof language !== "string") return fail();
-  return {
+  const detail: RepoDetail = {
     ...mapSummary(json),
     language,
     stargazersCount: num(json, "stargazers_count"),
     watchersCount: num(json, "subscribers_count"),
     forksCount: num(json, "forks_count"),
     openIssuesCount: num(json, "open_issues_count"),
-    htmlUrl: safeUrl(str(json, "html_url"), "github.com", false),
+    htmlUrl: safeUrl(str(json, "html_url"), "github.com"),
   };
+  // 形の検証を先に行い、想定外の JSON は UPSTREAM に分類する。公開と確認できないものは NOT_FOUND。
+  if (!isPublic(json)) throw new GitHubApiError("NOT_FOUND");
+  return detail;
 }

@@ -1,6 +1,6 @@
 # 0003: GitHub APIクライアント 実装計画
 
-Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #3
 - 対応する仕様: docs/specs/0003-github-api-client.md
@@ -254,7 +254,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/client.ts`、`.env.example`（コメントに「公開リポジトリの読み取り専用トークンに限る」を追記。コメントに `KEY=` 形式を書かない。`tests/foundation/env-files.test.ts` で検査される）
   - 完了条件: `pnpm test` PASS。
 
-- [ ] **T12: 再レビュー指摘の対応（AC-5f・5g・13d・13e の改定、AC-24f の補強、cancel を待たない）**
+- [x] **T12: 再レビュー指摘の対応（AC-5f・5g・13d・13e の改定、AC-24f の補強、cancel を待たない）**
   - 先に書くテスト:
     - `lib/github/mappers.test.ts`: `private` が欠落・文字列・`visibility: "private"/"internal"` のとき、検索では除外・詳細では `NOT_FOUND`。`private: false` で `visibility` が無い/`public` は成功（「private 未設定は成功」の旧テストは仕様変更により書き換える）。`avatar_url` は `raw.githubusercontent.com`、`user-images.githubusercontent.com` など `avatars.githubusercontent.com` 以外を `UPSTREAM`。userinfo・ポート付き（`https://u:p@avatars.githubusercontent.com/..`、`:8443`）を `UPSTREAM`。成功時は正規化後の URL（`url.href`）を返す（例: 大文字ホストが小文字になる）。
     - `lib/github/errors.test.ts`: `x-ratelimit-reset` が `"9000000000000"`（安全な整数だが `Invalid Date` になる）のとき `resetAt` が `undefined`。
@@ -359,3 +359,5 @@ AC と検証手段の対応:
 - 2026-10-07: T9〜T11 の RED / GREEN の記録（再レビューの指摘による追記）。T9: テスト追加後に 149 件中 5 件が失敗（`//evil.example/x` などで fetch が呼ばれる 3 件、エラー本文の cancel が呼ばれない 1 件、巨大な `x-ratelimit-reset` で Invalid Date の 1 件。いずれも期待値の不一致）→ GREEN。T10: `private` の除外・URL 検証の追加テストで 19 件が失敗（例外が投げられない、除外されない）→ GREEN。T11: 257 文字の `q` で fetch まで進み 1 件が失敗 → GREEN。
 - 2026-10-07: `6152c91` で追加した AC-23b（本当の未設定）と公開面の AC-24e（タイムアウト）のテストは、実装の後から書いた特性テストで RED を経ていない（reviewer の指摘による補強）。代わりに、本番コードを一時的に壊す検出力確認を実施した（`TIMEOUT_MS` を 60 秒にすると AC-24e の 2 件が失敗、`buildHeaders` の条件を常に真にすると AC-23b の 4 件が失敗。いずれも復元済み）。
 - 2026-10-07: セキュリティ再レビューの指摘（Critical・High 無し）。Medium: `private` 判定の fail-safe 化、Low: avatar ホストの限定・URL の正規化と userinfo/ポートの拒否・cancel を待たない。人間がすべて採用し、仕様の AC-5f・5g・13d・13e を改定、タスク T12 を追加した。
+- 2026-10-07: T12 完了。RED: 219 件中 21 件が失敗（`private` 欠落・文字列・`visibility` 非公開の除外されない/NOT_FOUND にならない、avatar の別サブドメイン・userinfo・ポートが通る、URL が正規化されない、cancel が永久に解決しない本文で `githubGet` がハングする）。`"9000000000000"` の `resetAt` のテストは、`Invalid Date` の分岐が実装済みのため最初から PASS（回帰テスト）。GREEN 中に、公開判定を形の検証より先に置くと既存の AC-24d（想定外の JSON は UPSTREAM）と衝突することが分かり、形の検証を先にして公開判定を後にした。このため「非公開で形や URL も不正な応答」は NOT_FOUND ではなく UPSTREAM になる（どちらも返さないので安全上の差はない）。
+- 2026-10-07: 検証。`bash scripts/verify.sh`（full）: typecheck / lint / test（10 ファイル 219 件）/ build がすべて PASS。Status を done に更新。

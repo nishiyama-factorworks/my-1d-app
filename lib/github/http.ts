@@ -47,7 +47,9 @@ export async function githubGet(
     }
     if (!res.ok) {
       // エラー本文は使わないので破棄し、接続を解放する。
-      await res.body?.cancel().catch(() => {});
+      // cancel の失敗は分類結果に影響せず、元の HTTP エラーを優先するため無視する。
+      // 完了を待つと cancel が滞ったときにエラー分類まで遅れるため、待たない。
+      void res.body?.cancel().catch(() => {});
       throw classifyHttpError(res.status, res.headers, endpoint);
     }
     try {
