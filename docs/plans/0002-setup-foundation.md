@@ -116,7 +116,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
   - 実装対象: 原則なし。上記修正が必要なら `package.json`（1 ファイル）と本計画の進捗メモ。
   - 完了条件: AC-21a の 5 コマンドがすべて終了コード 0、harness-doctor に `[FAIL]` 無し、`verify.sh` PASS。結果を進捗メモに記録し、計画の `Status` を更新。
 
-- [ ] **T9: `SRC_REGEX` に `features` を追加し、`.prettierignore` を追加（人間承認済みの追加タスク）**
+- [x] **T9: `SRC_REGEX` に `features` を追加し、`.prettierignore` を追加（人間承認済みの追加タスク）**
   - 対応 AC: なし（要確認事項 2 と提案 P1 の採用）
   - 先に書くテスト: なし（設定のみ）
   - 実装対象: `.claude/harness.env`（`SRC_REGEX` の `(src|app|lib|components|pages)` に `features` を追加。**保護ファイル。編集時に確認が出る**）、`.prettierignore`（`pnpm-lock.yaml`、`.next/`、`node_modules/`、`docs/` 等）
