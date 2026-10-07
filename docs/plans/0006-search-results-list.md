@@ -1,6 +1,6 @@
 # 0006: 検索結果一覧 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #6
 - 対応する仕様: docs/specs/0006-search-results-list.md
@@ -23,11 +23,11 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 | 取得の場所 | `app/page.tsx`（`export default async function Home({ searchParams }: PageProps<"/">)`）の中。`q === null` のときは呼ばない |
 | 呼び出し | `searchRepositories({ q, page, perPage: SEARCH_PER_PAGE })`（`perPage` を明示する理由は 1.2 (a)・Q5） |
 | 一覧コンポーネント | `SearchResults`（名前付き export）。`features/search/components/search-results.tsx`。Server Component（`"use client"` なし） |
-| props | `{ totalCount: number; items: readonly RepoSummary[] }`。`RepoSummary` は `import type { RepoSummary } from "@/lib/github"`（型のみの import はコンパイル時に消えるため、`server-only` は実行時に読み込まれない） |
+| props | `{ totalCount: number; items: readonly RepoSummary[] }`。`RepoSummary` は `import type { RepoSummary } from "@/lib/github/types"`（`@/lib/github` の index は `server-only` を含む client を再 export するため使わない）（型のみの import はコンパイル時に消えるため、`server-only` は実行時に読み込まれない） |
 | 総ヒット件数 | `<p>総ヒット件数: {formatNumber(totalCount)} 件</p>`（1つの要素の中に収め、`getByText("総ヒット件数: 12,345 件")` で取れる形にする） |
 | 一覧 | `<ul>` / `<li key={fullName}>`。`items` の順に `map` するだけで並べ替えない（AC-5） |
 | 各行 | `<li>` の中に `<Image>`（アイコン）と `<Link href={詳細パス}>{fullName}</Link>`。**アイコンはリンクの外**に置く（1.2 (d)・Q3） |
-| アイコン | `<Image src={ownerAvatarUrl} alt={ownerLogin} width={40} height={40} className="size-10 rounded-full" />`。`sizes` は付けない（固定サイズのため。1.2 (c)）。`preload` / `unoptimized` は付けない |
+| アイコン | `<Image src={ownerAvatarUrl} alt={ownerLogin} width={40} height={40} className="rounded-full" />`。`sizes` は付けない（固定サイズのため。1.2 (c)）。`preload` / `unoptimized` は付けない |
 | 詳細パス | `repoPathFromFullName(fullName)`（新規。`features/search/lib/repo-path.ts`）。`fullName` を最初の `/` で owner と repo に分け、0004 の `buildRepoPath(owner, repo)` に渡す（1.2 (e)・Q1） |
 | `remotePatterns` | `[{ protocol: "https", hostname: "avatars.githubusercontent.com", port: "", pathname: "/u/**", search: "?v=4" }]`（1.2 (c)・Q2） |
 | ページの配置 | `<SearchForm>` の下に `{result !== null && <SearchResults totalCount={result.totalCount} items={result.items} />}` |
@@ -164,7 +164,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `app/page.tsx`、`app/page.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`pnpm typecheck` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: 文書の更新と最終確認**
+- [x] **T5: 文書の更新と最終確認**
   - 対応 AC: なし（文書・検証）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（3節の `features/search/` に「検索結果一覧（`components/search-results.tsx`）。取得は `app/page.tsx` が `searchRepositories` で行い、結果を渡す」、5節に「一覧は Server Component（`"use client"` なし）」「`next/image` の外部ホストは `avatars.githubusercontent.com` の `/u/**?v=4` のみ（`next.config.ts`）」を追記）、本計画の進捗メモ（2 ファイル）
@@ -266,3 +266,6 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-08: RED / GREEN の記録。T1: `images` 未設定で 7 件中 2 件が失敗（`remotePatterns` が `undefined`、`hasRemoteMatch` が偽）→ GREEN。T2: 常に `""` を返す仮実装で 5 件すべて失敗 → GREEN。T3: `<div />` だけの仮実装で 7 件すべて失敗（要素が見つからない）。`next/image` と `next/link` が jsdom で描画できることもこの時点で確認 → GREEN。T4: `app/page.tsx` 変更前に 13 件中 4 件が失敗（AC-4a の 3 件はモックが呼ばれない・要素が無い、仕様 6.1 は reject されない）、AC-4b の 4 件と既存 5 件は通過 → GREEN。いずれも期待値の不一致で、インポート・構文エラーではない。
 - 2026-10-08: T5 の確認。`bash scripts/verify.sh`（full）: typecheck / lint / test（18 ファイル 333 件）/ build がすべて PASS。手動確認は `next build` → `next start`（ポート 3056）と**実際の GitHub API**（認証なし）で実施。確認できたもの: `/?q=react&page=2` が 200、総ヒット件数 `7,298,938 件`、一覧 30 行、リンクは `/repos/<owner>/<repo>`、アイコンの `srcSet` が `/_next/image?url=…` 経由／`/` では一覧が出ない／画像最適化は実際のアイコンで 200（`image/jpeg`）、許可外ホスト・`/u/` 以外・`?v=4` 以外はいずれも 400（`remotePatterns` の固定が有効）／`page=35` と 257 文字の `q` は 500（仕様 6.1 の暫定挙動）。**未確認**: (a) 実 API での最終ページ・少件数の行数（`q=repo:vercel/next.js` は、確認中に認証なしの検索 API の制限（1 分あたり 10 回）に達して `RATE_LIMIT`（403）となり取得できなかった。行数そのものは AC-6b のコンポーネントテストで検証済み）、(b) ブラウザでの目視（アイコンの表示、行のリンクを押した遷移、幅 320px での折り返し）。
 - 2026-10-08: 確認で分かったこと。認証なし（`GITHUB_TOKEN` 未設定）では、検索 API が 1 分あたり 10 回に制限されるため、連続して検索すると `RATE_LIMIT` の標準エラー画面になる。仕様 6.1 の暫定挙動のとおりで、専用のエラー表示は 0010 で扱う。`GITHUB_TOKEN`（公開リポジトリの読み取り専用）を設定すると制限が緩和される。
+- 2026-10-08: レビュー（reviewer: Approve / security-reviewer: Critical・High なし、Medium 1 件）への対応。本 PR で対応: 長い `owner/repo` の折り返し（リンクに `break-all`。**幅 320px の目視は未実施**）、`app/page.test.tsx` のモックに型を付けた（`@/lib/github/types` からの型だけの import）、`architecture.md` の記述を正確にした（`remotePatterns` のパス・クエリは 0003 の検証より狭く、0003 を通っても画像が壊れ得る）、計画と実装の食い違い（アイコンの `className`、`RepoSummary` の import 先）を直した、`repo-path.test.ts` の整理と「最初の `/` で分ける」意図のテストを追加。
+- 2026-10-08: 申し送り（本 PR では実装しない）。**0007**: `page` が 34 を超えるときは API を呼ばない（AC-9b）。現状は 422 を受けて 500 になり、レート制限も消費する。**0011（キャッシュ）**: 同じ (q, page) の呼び出しを共有しないため、認証なしでは 1 分に十数回の検索で全利用者の検索が `RATE_LIMIT` になる（実測。トークンがあっても上限は 1 分 30 回）。`fetch` の `next.revalidate` / `unstable_cache` / IP 単位の制限を検討する。画像最適化の負荷（`/u/**` は ID を変えれば無制限に取得・キャッシュされる）に備えて `images.imageSizes` / `deviceSizes` を絞る、`pathname` を `/u/*` にする、`poweredByHeader: false` とセキュリティヘッダを設定する。**0010**: 専用のエラー表示（`RATE_LIMIT` は `resetAt`）。`loading.tsx` を置くとフォームごと読み込み中表示になるので `<Suspense>` への移行を判断する。**0009**: 一覧のリンクに検索条件（q・page）を持ち回る。**0008**: `Link` の prefetch で `getRepository` の呼び出しが増えないかを確認する。**0003 / 0011**: `avatar_url` の検証（パス・クエリ）を `remotePatterns` と揃えるか、壊れた画像を許容するかを判断する。
+- 2026-10-08: 最終検証。レビュー対応後に `bash scripts/verify.sh`（full）を再実行し、typecheck / lint / test（18 ファイル 334 件）/ build がすべて PASS。Status は done に更新済み。

@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { GitHubApiError } from "@/lib/github/errors";
+import type {
+  SearchRepositoriesParams,
+  SearchRepositoriesResult,
+} from "@/lib/github/types";
 import Page from "./page";
 
 // SearchForm が useRouter を呼ぶ。App Router のコンテキストが無いと例外になるため、
@@ -14,7 +18,10 @@ vi.mock("next/navigation", () => ({
 // 検索 API（ネットワーク境界）だけを差し替える。ファクトリで丸ごと置き換えるので
 // 本物の client.ts は読み込まれない。
 const { searchRepositories } = vi.hoisted(() => ({
-  searchRepositories: vi.fn(),
+  searchRepositories:
+    vi.fn<
+      (params: SearchRepositoriesParams) => Promise<SearchRepositoriesResult>
+    >(),
 }));
 
 vi.mock("@/lib/github", () => ({ searchRepositories }));

@@ -26,7 +26,7 @@ export function SearchResults({
             />
             <Link
               href={repoPathFromFullName(item.fullName)}
-              className="underline"
+              className="break-all underline"
             >
               {item.fullName}
             </Link>
