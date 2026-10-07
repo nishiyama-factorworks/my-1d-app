@@ -117,7 +117,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: `next/image` の外部ホストの許可**
+- [x] **T1: `next/image` の外部ホストの許可**
   - 対応 AC: AC-6a（アイコンの表示の前提。仕様 9節の決定）
   - 先に書くテスト: `tests/foundation/next-config.test.ts`（`// @vitest-environment node`。`import nextConfig from "@/next.config"`）
     - `AC-6a（仕様9節）: images.remotePatterns は avatars.githubusercontent.com の https・/u/**・?v=4 だけを許可する`（`toEqual` で配列全体を完全一致。他のホストが混ざると失敗する）
