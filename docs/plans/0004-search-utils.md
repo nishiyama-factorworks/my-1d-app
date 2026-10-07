@@ -157,7 +157,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装上の注意: `Intl` と `toLocaleString` を使わない（1.2 (e) 案 A）。
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: 検索パスの生成**
+- [x] **T5: 検索パスの生成**
   - 対応 AC: AC-25i
   - 先に書くテスト: `lib/search/paths.test.ts`（`// @vitest-environment node`、`describe("buildSearchPath")`）
     - `AC-25i: キーワード "日本語 & react"、ページ2のとき /?q=%E6%97%A5%E6%9C%AC%E8%AA%9E+%26+react&page=2 を返す`
