@@ -164,7 +164,7 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
   - 実装対象: `features/search/lib/page-items.ts`、`features/search/lib/page-items.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: ページネーションのコンポーネント**
+- [x] **T2: ページネーションのコンポーネント**
   - 対応 AC: AC-8a、AC-8b、AC-8c、AC-8d、AC-8e、AC-8f、AC-8g（コンポーネント単位）
   - 先に書くテスト: `features/search/components/pagination.test.tsx`（jsdom。モックなし）
     - `AC-8a: 最大 4・現在 2 のとき、ラベル「ページネーション」の nav に「前へ」「1」「2」「3」「4」「次へ」のリンクがこの順に並ぶ`（`getByRole("navigation", { name: "ページネーション" })`、`within(nav).getAllByRole("link")` の名前の配列を完全一致）
