@@ -98,7 +98,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
   - 方法: 選択肢 A では `shadcn init` CLI を使わず、shadcn/ui 公式の manual installation 手順に沿って手で作成する（CLI は承認していない依存や `globals.css` の書き換えを伴うため）。手順は実施時に公式ドキュメントで確認し、推測で書かない。
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T7: CLAUDE.md 6節のディレクトリ構成をルート直下に修正**
+- [x] **T7: CLAUDE.md 6節のディレクトリ構成をルート直下に修正**
   - 対応 AC: なし（仕様 4.1「CLAUDE.md 6節と `SRC_REGEX` は実態に合わせる」）
   - 先に書くテスト: なし（文書のみ）
   - 実装対象: `CLAUDE.md`（1 ファイル）。6節のツリーから `src/` を外し、`app/` `features/<名前>/` `components/ui/` `lib/` をルート直下に置く形にする。末尾の「※ `src/` を使わない構成にする場合は…」の注記を「ルート直下構成を採用（ADR 0003 / 仕様 0002）。`SRC_REGEX` はルート直下を対象にしている」旨に書き換える。
