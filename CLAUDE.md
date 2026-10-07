@@ -13,21 +13,21 @@
 ## 2. 技術スタック（変更したら本節と `.claude/harness.env` を同時に更新）
 
 - フレームワーク: Next.js（App Router）/ TypeScript（strict）
-- スタイリング: <例: Tailwind CSS>
-- テスト: <例: Vitest + Testing Library（単体/結合）、Playwright（E2E）>
+- スタイリング: Tailwind CSS v4 + shadcn/ui（`docs/adr/0003`）
+- テスト: Vitest + Testing Library + jsdom（単体/結合）。E2E（Playwright）は仕様 0013 で扱う
 - Lint/Format: ESLint + Prettier
 - パッケージマネージャ: pnpm（`npm` / `yarn` は使わない）
 - データ/認証/外部API: Github API
 
 ## 3. コマンド（実体は `.claude/harness.env` で一元管理）
 
-| 目的 | コマンド |
-| --- | --- |
-| 型チェック | `pnpm typecheck` |
-| Lint | `pnpm lint` |
-| 単体/結合テスト | `pnpm test` |
-| ビルド | `pnpm build` |
-| E2E | `pnpm test:e2e` |
+| 目的                                 | コマンド                 |
+| ------------------------------------ | ------------------------ |
+| 型チェック                           | `pnpm typecheck`         |
+| Lint                                 | `pnpm lint`              |
+| 単体/結合テスト                      | `pnpm test`              |
+| ビルド                               | `pnpm build`             |
+| E2E                                  | `pnpm test:e2e`          |
 | **全品質ゲート（完了前に必ず実行）** | `bash scripts/verify.sh` |
 
 ## 4. 開発ワークフロー（厳守）— 仕様駆動 + TDD
@@ -61,16 +61,16 @@
 ## 6. ディレクトリ構成（正）
 
 ```
-src/
-  app/            ルーティング（App Router）。ページは薄く保つ
-  features/<名前>/ 機能単位のコード（components / actions / lib / *.test.ts を同居）
-  components/ui/  再利用 UI
-  lib/            横断ユーティリティ
-tests/            E2E・結合テストの共有ヘルパ
+app/              ルーティング（App Router）。ページは薄く保つ
+features/<名前>/  機能単位のコード（components / actions / lib / *.test.ts を同居）
+components/ui/    再利用 UI（shadcn/ui の部品もここ）
+lib/              横断ユーティリティ
+tests/            E2E・結合テストの共有ヘルパ、構成検査テスト
 docs/             specs / plans / adr / architecture / quality-gates
 .claude/          ハーネス（rules / agents / commands / skills / hooks）
 ```
-※ `src/` を使わない構成にする場合は `.claude/harness.env` の `SRC_REGEX` とこの節を更新する。
+
+※ `src/` は使わず、ルート直下に置く（仕様 0002）。`.claude/harness.env` の `SRC_REGEX` もルート直下を対象にしている。
 
 ## 7. ハーネス（自動で働く仕組み）の概要
 
