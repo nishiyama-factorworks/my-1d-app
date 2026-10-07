@@ -184,7 +184,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/client.ts`（先頭に `import "server-only"`）、`lib/github/index.ts`、`lib/github/client.test.ts`（3 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T6: トークンがエラー・戻り値・ログに出ないことの検査（AC-23d）**
+- [x] **T6: トークンがエラー・戻り値・ログに出ないことの検査（AC-23d）**
   - 対応 AC: AC-23d
   - 先に書くテスト: `lib/github/token-leak.test.ts`（`// @vitest-environment node`、`vi.mock("server-only", () => ({}))`）
     - 準備: `vi.stubEnv("GITHUB_TOKEN", SENTINEL)`。`SENTINEL` は実在しない識別しやすい文字列（例: `"test-token-SENTINEL-0003"`。`ghp_` 形式は使わない。シークレットスキャナの誤検知を避けるため）。`console.log` `info` `warn` `error` `debug` を `vi.spyOn` で差し替える。
@@ -318,3 +318,4 @@ AC と検証手段の対応:
 - 2026-10-07: 人間が推奨どおりで承認（Status: in-progress）。決定事項: Q1〜Q3 採用（`q` 空・`page`/`perPage` 不正は `VALIDATION`、`owner`/`repo` は許可リスト検証で不正なら `NOT_FOUND`。いずれも `fetch` を呼ばない）→ 仕様 0003 に AC-5c・AC-5d・AC-13c を追加し、タスク T5b を T5 の後に追加／Q4（検索の 404・詳細の 422 は `UPSTREAM`）、Q5（`retry-after` は使わない。二次レート制限は `UPSTREAM`）、Q6（401 は `UPSTREAM`）は計画の解釈どおり／Q7 ADR 不要／Q8 手書きの型ガード／`/issue split` はせず 1 PR。提案 P1 は 0006 の計画時に判断、P2・P3 は本タスクに入れない。
 - 2026-10-07: T1 人間承認のうえ追加: server-only 0.0.1（MIT、最終公開 2022-09-03、依存なし）。`node_modules/server-only/package.json` の exports が react-server→./empty.js、default→./index.js であることを確認済み（T7 の前提）。
 - 2026-10-07: T4 実装後、本文の読み取り中にタイムアウトすると UPSTREAM になる点が AC-24e（タイムアウトは NETWORK）と食い違うと判明。テストを先に追加して RED（UPSTREAM が返る）を確認し、`controller.signal.aborted` のとき NETWORK にして GREEN。`vi.mock("server-only")` は node_modules のパッケージに効くことを確認済み。
+- 2026-10-07: T6 完了。検出力確認（いずれも本番コードを一時的に壊して該当テストの失敗を確認し、git checkout で復元）: (1) GitHubApiError の message にトークンを含める → 失敗、(2) NETWORK エラーに元の例外を cause として渡す → 失敗（search/repo 各の接続失敗・タイムアウト 計4件）、(3) NETWORK 送出前に console.error でヘッダを出す → 失敗（同 計4件）。
