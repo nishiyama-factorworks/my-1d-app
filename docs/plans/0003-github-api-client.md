@@ -217,7 +217,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/server-only.test.ts`（1 ファイル）
   - 完了条件: `pnpm test` PASS、手動ビルド確認と検出力確認の記録。
 
-- [ ] **T8: 文書の更新と最終確認**
+- [x] **T8: 文書の更新と最終確認**
   - 対応 AC: なし（`.claude/rules/60-docs.md`「コードと文書の食い違いを直す」）
   - 先に書くテスト: なし（文書のみ）
   - 実装対象: `docs/architecture.md`（3節に「GitHub API の呼び出しは `lib/github/` だけが行う」、5節「Server / Client の境界」に「トークンを扱うモジュールは `import "server-only"`。型とエラー定義は Client からも import 可」を追記）、本計画の進捗メモ（2 ファイル）

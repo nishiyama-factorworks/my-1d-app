@@ -29,6 +29,7 @@
 - `features/<名前>/`: 機能単位（UI・アクション・ロジック・テストを同居）
 - `components/ui/`: 再利用 UI（shadcn/ui の部品もここ）
 - `lib/`: 横断ユーティリティ
+- `lib/github/`: GitHub REST API の呼び出し層。GitHub API は**ここだけ**が呼ぶ。公開面は `lib/github/index.ts`（`searchRepositories` / `getRepository` / `GitHubApiError` と型）
 - `tests/`: E2E・結合テストの共有ヘルパ、構成検査テスト
 
 ## 4. データモデル
@@ -37,7 +38,8 @@
 
 ## 5. 境界とルール
 
-- Server / Client の境界: <方針>
+- Server / Client の境界: トークン（`GITHUB_TOKEN`）を扱うモジュール（`lib/github/http.ts` `client.ts`）は先頭で `import "server-only"` とし、Client Component から読み込むとビルドで失敗させる。型とエラー定義（`types.ts` `errors.ts`）は Client からも import できる
+- GitHub API のエラー: `GitHubApiError`（`kind`: `RATE_LIMIT` `NOT_FOUND` `VALIDATION` `UPSTREAM` `NETWORK`、`status`、`resetAt`）を throw する。メッセージは種別ごとの固定文言で、トークン・URL・レスポンス本文を含めない
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
 - 認証・認可: <方針>
 - エラー形式: `{ error: { code, message } }`
