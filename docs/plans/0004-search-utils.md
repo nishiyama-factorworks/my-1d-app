@@ -121,7 +121,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `lib/search/constants.ts`、`lib/search/pagination.ts`、`lib/search/pagination.test.ts`（3 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: キーワードの正規化**
+- [x] **T2: キーワードの正規化**
   - 対応 AC: AC-25a、AC-25b
   - 先に書くテスト: `lib/search/query.test.ts`（`// @vitest-environment node`、`describe("normalizeKeyword")`）
     - `AC-25a: "  react  " を正規化すると "react" になる`
