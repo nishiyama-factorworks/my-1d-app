@@ -131,7 +131,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `lib/search/query.ts`、`lib/search/query.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: URL クエリの解釈（`parseSearchParams`）**
+- [x] **T3: URL クエリの解釈（`parseSearchParams`）**
   - 対応 AC: AC-25c、AC-25k、AC-25d、AC-25e、AC-25l
   - 先に書くテスト: `lib/search/query.test.ts` に `describe("parseSearchParams")` を追加
     - `it.each` 表: `AC-25c: page が $label のとき page=1 になる`（未指定＝キー無し、`"abc"`、`"0"`、`"-3"`、`"2.5"`）
