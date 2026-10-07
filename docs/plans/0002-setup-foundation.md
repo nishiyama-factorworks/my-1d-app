@@ -59,7 +59,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
   - RED について: 現状が既に条件を満たしているため、正しく書けば最初から PASS する（特性テスト）。**検出力の確認**として、ローカルで一時的に `tsconfig.json` の `strict` を `false` にして該当テストが失敗することを確かめ、すぐ元に戻す（コミットしない）。テスト側を書き換えて確認しない。
   - 完了条件: `pnpm test` PASS、検出力確認の結果を進捗メモに記録。
 
-- [ ] **T3: `.gitignore` と `.env.example` の整備、検査テスト**
+- [x] **T3: `.gitignore` と `.env.example` の整備、検査テスト**
   - 対応 AC: AC-32a
   - 先に書くテスト: `tests/foundation/env-files.test.ts`（`// @vitest-environment node`）
     - `AC-32a: .env.example に GITHUB_TOKEN のキーがある`
