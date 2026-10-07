@@ -146,7 +146,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `lib/search/query.ts`、`lib/search/query.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: 数値・言語の表示用整形**
+- [x] **T4: 数値・言語の表示用整形**
   - 対応 AC: AC-25g、AC-25h
   - 先に書くテスト: `lib/search/format.test.ts`（`// @vitest-environment node`）
     - `it.each` 表: `AC-25g: $value を整形すると "$expected" になる`（0→`"0"`、999→`"999"`、1234→`"1,234"`、1234567→`"1,234,567"`）
