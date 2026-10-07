@@ -176,7 +176,7 @@ describe("AC-23d: トークンが漏れない", () => {
               {
                 id: 1,
                 full_name: "a/b",
-                owner: { login: "a", avatar_url: "https://example.com/a" },
+                owner: { login: "a", avatar_url: "https://avatars.githubusercontent.com/u/1" },
               },
             ],
           }),
@@ -197,7 +197,7 @@ describe("AC-23d: トークンが漏れない", () => {
           JSON.stringify({
             id: 1,
             full_name: "vercel/next.js",
-            owner: { login: "vercel", avatar_url: "https://example.com/v" },
+            owner: { login: "vercel", avatar_url: "https://avatars.githubusercontent.com/u/2" },
             language: "TypeScript",
             stargazers_count: 100,
             watchers_count: 999,

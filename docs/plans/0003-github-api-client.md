@@ -244,7 +244,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/http.ts`（URL 組み立て後に `url.origin !== BASE_URL` で失敗、`!res.ok` で `res.body?.cancel()`）、`lib/github/errors.ts`（`Number.isSafeInteger` と `Invalid Date` の確認）
   - 完了条件: `pnpm test` PASS、`verify --quick` PASS。
 
-- [ ] **T10: レスポンスの安全性（AC-5f、AC-5g、AC-13d、AC-13e）**
+- [x] **T10: レスポンスの安全性（AC-5f、AC-5g、AC-13d、AC-13e）**
   - 先に書くテスト: `lib/github/mappers.test.ts`（`private: true` の要素の除外と `totalCount` が API の値のままであること、詳細の `private: true` は `NOT_FOUND`、`avatar_url` / `html_url` の https・ホスト検証と `UPSTREAM`。`javascript:`、`http:`、別ホスト、`githubusercontent.com` に似せたホスト（`evilgithubusercontent.com`）を含める）
   - 実装対象: `lib/github/mappers.ts`。**テストデータの更新**: `client.test.ts` と `token-leak.test.ts` の `example.com` 系 URL を実際の GitHub のホスト（`avatars.githubusercontent.com`）に直す（仕様変更に伴うデータ更新で、期待値は弱めない）
   - 完了条件: `pnpm test` PASS。

@@ -198,3 +198,107 @@ describe("mapRepositoryResponse", () => {
     },
   );
 });
+
+const BAD_AVATAR_URLS = [
+  "javascript:alert(1)",
+  "http://avatars.githubusercontent.com/u/1",
+  "https://evil.example/a.png",
+  "https://evilgithubusercontent.com/a.png",
+  "https://githubusercontent.com.evil.example/a",
+  "not a url",
+];
+
+describe("mapSearchResponse: private と URL の検証", () => {
+  it("AC-5f: private: true の要素だけが除外され、totalCount は API の値のままになる", () => {
+    const json = {
+      total_count: 99,
+      items: [
+        { ...makeSearchItem(0), private: true },
+        { ...makeSearchItem(1), private: false },
+        makeSearchItem(2),
+      ],
+    };
+
+    const result = mapSearchResponse(json);
+
+    expect(result.totalCount).toBe(99);
+    expect(result.items.map((i) => i.fullName)).toEqual([
+      "owner-1/repo-1",
+      "owner-2/repo-2",
+    ]);
+  });
+
+  it.each(BAD_AVATAR_URLS)(
+    "AC-5g: owner.avatar_url が %s のとき UPSTREAM になる",
+    (url) => {
+      const item = makeSearchItem(0);
+      item.owner.avatar_url = url;
+
+      expectUpstream(() =>
+        mapSearchResponse({ total_count: 1, items: [item] }),
+      );
+    },
+  );
+
+  it("AC-5g: owner.avatar_url が https://avatars.githubusercontent.com/u/1?v=4 のとき成功する", () => {
+    const item = makeSearchItem(0);
+    item.owner.avatar_url = "https://avatars.githubusercontent.com/u/1?v=4";
+
+    const result = mapSearchResponse({ total_count: 1, items: [item] });
+
+    expect(result.items[0].ownerAvatarUrl).toBe(
+      "https://avatars.githubusercontent.com/u/1?v=4",
+    );
+  });
+});
+
+describe("mapRepositoryResponse: private と URL の検証", () => {
+  it("AC-13d: private: true のとき NOT_FOUND の GitHubApiError になる", () => {
+    const e = catchError(() =>
+      mapRepositoryResponse(makeRepoResponse({ private: true })),
+    );
+
+    expect(e).toBeInstanceOf(GitHubApiError);
+    expect((e as GitHubApiError).kind).toBe("NOT_FOUND");
+  });
+
+  it.each([
+    ["private: false", { private: false }],
+    ["private 未設定", {}],
+  ])("AC-13d: %s のとき成功する", (_, overrides) => {
+    const result = mapRepositoryResponse(makeRepoResponse(overrides));
+
+    expect(result.fullName).toBe("vercel/next.js");
+  });
+
+  it.each(BAD_AVATAR_URLS)(
+    "AC-13e: owner.avatar_url が %s のとき UPSTREAM になる",
+    (url) => {
+      expectUpstream(() =>
+        mapRepositoryResponse(
+          makeRepoResponse({ owner: { login: "vercel", avatar_url: url } }),
+        ),
+      );
+    },
+  );
+
+  it.each([
+    "javascript:alert(1)",
+    "http://github.com/x",
+    "https://evil.example/x",
+    "https://github.com.evil.example/x",
+    "https://notgithub.com/x",
+  ])("AC-13e: html_url が %s のとき UPSTREAM になる", (url) => {
+    expectUpstream(() =>
+      mapRepositoryResponse(makeRepoResponse({ html_url: url })),
+    );
+  });
+
+  it("AC-13e: html_url が https://github.com/vercel/next.js のとき成功する", () => {
+    const result = mapRepositoryResponse(
+      makeRepoResponse({ html_url: "https://github.com/vercel/next.js" }),
+    );
+
+    expect(result.htmlUrl).toBe("https://github.com/vercel/next.js");
+  });
+});

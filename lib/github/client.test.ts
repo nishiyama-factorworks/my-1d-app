@@ -62,7 +62,7 @@ function searchBody(count = 30, totalCount = 1234) {
       full_name: `owner${i}/repo${i}`,
       owner: {
         login: `owner${i}`,
-        avatar_url: `https://avatars.example.com/u/${i}`,
+        avatar_url: `https://avatars.githubusercontent.com/u/${i}`,
       },
     })),
   };
@@ -74,7 +74,7 @@ function repoBody(overrides: Record<string, unknown> = {}) {
     full_name: "vercel/next.js",
     owner: {
       login: "vercel",
-      avatar_url: "https://avatars.example.com/u/14985020",
+      avatar_url: "https://avatars.githubusercontent.com/u/14985020",
     },
     language: "TypeScript",
     stargazers_count: 100,
@@ -139,7 +139,7 @@ describe("searchRepositories", () => {
     expect(result.items[0]).toEqual({
       fullName: "owner0/repo0",
       ownerLogin: "owner0",
-      ownerAvatarUrl: "https://avatars.example.com/u/0",
+      ownerAvatarUrl: "https://avatars.githubusercontent.com/u/0",
     });
   });
 });
@@ -153,7 +153,7 @@ describe("getRepository", () => {
     expect(detail).toEqual({
       fullName: "vercel/next.js",
       ownerLogin: "vercel",
-      ownerAvatarUrl: "https://avatars.example.com/u/14985020",
+      ownerAvatarUrl: "https://avatars.githubusercontent.com/u/14985020",
       language: "TypeScript",
       stargazersCount: 100,
       watchersCount: 7,
