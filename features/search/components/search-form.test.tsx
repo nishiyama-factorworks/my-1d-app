@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SearchForm } from "./search-form";
 
 // useRouter は App Router のコンテキストが無いと例外になる。
@@ -11,8 +11,16 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
+const fetchMock = vi.fn();
+
 beforeEach(() => {
   push.mockReset();
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("SearchForm: 表示と初期値", () => {
@@ -68,7 +76,10 @@ describe("SearchForm: 送信と遷移", () => {
     const user = userEvent.setup();
     render(<SearchForm initialQuery="" />);
 
-    await user.type(screen.getByRole("searchbox", { name: "キーワード" }), "react");
+    await user.type(
+      screen.getByRole("searchbox", { name: "キーワード" }),
+      "react",
+    );
     await user.click(screen.getByRole("button", { name: "検索" }));
 
     expect(push).toHaveBeenCalledTimes(1);
@@ -107,7 +118,10 @@ describe("SearchForm: 送信と遷移", () => {
     const keyword = "日本語 & react";
     render(<SearchForm initialQuery="" />);
 
-    await user.type(screen.getByRole("searchbox", { name: "キーワード" }), keyword);
+    await user.type(
+      screen.getByRole("searchbox", { name: "キーワード" }),
+      keyword,
+    );
     await user.click(screen.getByRole("button", { name: "検索" }));
 
     expect(push).toHaveBeenCalledTimes(1);
@@ -126,6 +140,48 @@ describe("SearchForm: 送信と遷移", () => {
 
     await user.click(screen.getByRole("button", { name: "検索" }));
 
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push).toHaveBeenCalledWith("/?q=react&page=1");
+  });
+});
+
+describe("SearchForm: 空入力の案内", () => {
+  const GUIDE = "キーワードを入力してください";
+
+  it.each([
+    { label: "空", value: "" },
+    { label: "半角空白のみ", value: "   " },
+    { label: "全角空白のみ", value: "\u3000\u3000" },
+  ])(
+    "AC-3a/AC-3b: 入力欄が $label のとき「検索」を押すと遷移せず案内が表示される",
+    async ({ value }) => {
+      const user = userEvent.setup();
+      render(<SearchForm initialQuery="" />);
+      const input = screen.getByRole("searchbox", { name: "キーワード" });
+
+      if (value !== "") await user.type(input, value);
+      await user.click(screen.getByRole("button", { name: "検索" }));
+
+      expect(push).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent(GUIDE);
+      expect(input).toBeInvalid();
+      expect(input).toHaveAccessibleDescription(GUIDE);
+    },
+  );
+
+  it("AC-3a: 案内の表示後にキーワードを入れて検索すると、案内が消えて遷移する", async () => {
+    const user = userEvent.setup();
+    render(<SearchForm initialQuery="" />);
+    const input = screen.getByRole("searchbox", { name: "キーワード" });
+    await user.click(screen.getByRole("button", { name: "検索" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(GUIDE);
+
+    await user.type(input, "react");
+    await user.click(screen.getByRole("button", { name: "検索" }));
+
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+    expect(input).toBeValid();
     expect(push).toHaveBeenCalledTimes(1);
     expect(push).toHaveBeenCalledWith("/?q=react&page=1");
   });

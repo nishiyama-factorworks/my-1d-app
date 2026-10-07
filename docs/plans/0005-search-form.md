@@ -127,7 +127,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `features/search/components/search-form.tsx`、`features/search/components/search-form.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: 空入力の案内**
+- [x] **T3: 空入力の案内**
   - 対応 AC: AC-3a、AC-3b
   - 先に書くテスト: `features/search/components/search-form.test.tsx` に追加
     - `it.each` 表: `AC-3a/AC-3b: 入力欄が $label のとき「検索」を押すと遷移せず案内が表示される`（`""`、`"   "`）
