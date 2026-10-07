@@ -1,6 +1,6 @@
 # 0007: ページネーション 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #7
 - 対応する仕様: docs/specs/0007-pagination.md
@@ -217,7 +217,7 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
   - 実装対象: `app/page.tsx`、`app/page.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T6: 文書の更新と最終確認**
+- [x] **T6: 文書の更新と最終確認**
   - 対応 AC: なし（文書・検証）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（3節の `features/search/` に「ページネーション（`components/pagination.tsx`、番号の並びは `lib/page-items.ts`）」「範囲外ページの案内（`components/out-of-range-notice.tsx`）。範囲外の判定は `app/page.tsx` が行い、`page` が `calculateMaxPage(SEARCH_RESULT_LIMIT)` を超えるときは API を呼ばない」を追記）、本計画の進捗メモ（2 ファイル）
@@ -324,3 +324,7 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
 - 2026-10-08: T5 の検出力確認。比較演算子の変異を 3 通り試し、いずれも対応する境界のテストが失敗した（復元済み）。(1) 前段 `page > calculateMaxPage(SEARCH_RESULT_LIMIT)` を `>=` → AC-9b の `page=34`、(2) 後段 `page > maxPage` を `>=` → AC-9b の `page=34` と AC-9c の総件数 50・`page=2`、(3) `totalCount >= 1` を外す → AC-9d。
 - 2026-10-08: RED / GREEN の記録。T1: 空配列を返す仮実装で 11 件すべて失敗 → GREEN。T2: `<nav />` だけの仮実装で 11 件すべて失敗（9 件は `navigation` が見つからない、AC-8d の 2 件は null にならない）→ GREEN（`role="link"` + `aria-disabled` の `span` は jsx-a11y を通り、ルールの無効化は不要）。T3: `<div />` だけの仮実装で 4 件すべて失敗 → GREEN。T4: 11 件中 2 件が失敗（総件数 1001・50000 で注記が出ない）→ GREEN。T5: `app/page.tsx` 変更前に 22 件中 5 件が失敗、境界・AC-9d・既存 13 件は通過 → GREEN。いずれも期待値の不一致で、インポート・構文エラーではない。
 - 2026-10-08: T6 の確認。`bash scripts/verify.sh`（full）: typecheck / lint / test（21 ファイル 373 件）/ build がすべて PASS。手動確認は `next build` → `next start`（ポート 3057）と**実際の GitHub API**（認証なし。API 呼び出し 4 回）で実施。確認できたもの: `/?q=react&page=17` が 200 で、`前へ | 1 | … | 15 16 17 18 19 | … | 34 | 次へ`、17 に `aria-current="page"`、注記「上位1,000件まで表示します」、総ヒット件数 7,299,052 件／`/?q=react&page=35` が 200 で案内と「先頭のページへ」（`/?q=react&page=1`）。422 → 500 にならないので、API を呼んでいない／`/?q=react&page=34` が 200 で案内なし、「次へ」は無効（`aria-disabled`）／`q=repo:vercel/next.js` の `page=2`（総件数 1）が 200 で、案内と「最終ページ（1ページ目）へ」（AC-9c。0006 でレート制限のため取れなかった少件数のケース）。**未確認（ブラウザでの操作が必要）**: Tab キーでのフォーカス移動（押せない「前へ」「次へ」にフォーカスが止まらないこと）、番号を押したときの実際の遷移とスクロール位置（提案 P2 の判断材料）、リンクの先読み（prefetch）で検索 API の呼び出しが増えないか、幅 320px 程度での折り返し。
+- 2026-10-08: レビュー（reviewer: Approve / security-reviewer: Critical・High なし、Low 2 件）への対応。**本 PR で対応**: AC-9c の境界（`page=2`・総件数 50）で、案内が出ないことに加え、一覧と現在ページの `aria-current` まで確認するようにした／AC-8a に「一覧の下にページネーション」の検証（`compareDocumentPosition`）を追加（ページネーションを一覧の上に移す変異で失敗することを確認。復元済み）／`out-of-range-notice.test.tsx` の `toBeDefined()` と `getAttribute` を `toBeInTheDocument()` と `toHaveAttribute` に揃えた／`architecture.md` の「34 超」を `calculateMaxPage(SEARCH_RESULT_LIMIT)` 基準の書き方にした。
+- 2026-10-08: security-reviewer が実際に動かして確認したこと（GitHub には接続せず `fetch` を差し替えたダミー応答）。上流へ送られる `page` は常に 1〜34 で、0006 の申し送り（大きな `page` が上流へ送られる）は解消した（`035`、`1e3`、`9007199254740991`、`__proto__`、`page=99&page=1` など多数の形を試験）。headless Chrome で、リンクの先読み（prefetch）が検索 API を呼ばないことを確認した（ページ番号リンクが最大 34 本あっても API の消費は増えない。`prefetch` 未指定・`loading.tsx` なしの現状での結果）。これにより、T6 の手動確認のうち「先読みで検索 API の呼び出しが増えない」は確認済み。
+- 2026-10-08: 申し送り（本 PR では実装しない）。**0010**: (a) 257 文字以上の `q` と範囲外の `page` を組み合わせると、範囲外の案内（200）は出るが、そのリンク先（`page=1`）は 500 になる。`q` の長さ検証は `lib/github/client.ts` にだけあるため、0010 のエラー表示とまとめて扱う（`q` の検証を前段の判定より前に置く案）。(b) 取得を `<Suspense>` に移すときは、後段の判定（`isBeyondLastPage(page, totalCount)` を `features/search/lib/` の純粋関数に切り出すとテストの移植が楽）も一緒に移す。0 件の表示（AC-17）は AC-9d の分岐の中に置く。**0011**: ページネーションの `focus-visible` の見た目、ダークモードでの無効表示（`text-gray-400`）のコントラスト、範囲外の案内の `role="status"`（提案 P1）、検索 API のキャッシュと IP 単位の制限（0006 の申し送りと同じ。現状は同じ `?q=` を 3 回送ると上流も 3 回呼ばれる）。**人間の判断が要るもの**: `page=00035` や `page=99999999999999999999` のような値が黙って 1 ページ目になること（0004 で「厳密に解釈して 1 に補正」と決定済み。上流へ送られるのは 1 なので安全。見直すなら仕様 0004 の AC を変える）。
+- 2026-10-08: 最終検証。レビュー対応後に `bash scripts/verify.sh`（full）を再実行し、typecheck / lint / test（21 ファイル 373 件）/ build がすべて PASS。Status は done に更新済み。

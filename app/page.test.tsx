@@ -189,6 +189,13 @@ describe("トップページ: ページネーションと範囲外ページ", ()
       "aria-current",
     );
     expect(nav.getByRole("link", { name: "4" })).toBeInTheDocument();
+
+    // 仕様 6.1: ページネーションは一覧の下にある（DOM 上で一覧の行より後ろ）
+    const row = screen.getByRole("link", { name: "vercel/next.js" });
+    expect(
+      row.compareDocumentPosition(paginationNav()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it.each([
@@ -301,6 +308,13 @@ describe("トップページ: ページネーションと範囲外ページ", ()
     await renderPage({ q: "react", page: "2" });
 
     expect(screen.queryByText("指定されたページは存在しません")).toBeNull();
+    // 範囲外にならないときは、通常どおり一覧とページネーションが出る
+    expect(
+      screen.getByRole("link", { name: "vercel/next.js" }),
+    ).toBeInTheDocument();
+    expect(
+      within(paginationNav()).getByRole("link", { name: "2" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("AC-9d: /?q=react&page=2・総件数0のとき、範囲外の案内を出さず0件と空の一覧を表示する", async () => {
