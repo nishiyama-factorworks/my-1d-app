@@ -191,7 +191,7 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
   - 実装対象: `features/search/components/out-of-range-notice.tsx`、`features/search/components/out-of-range-notice.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: 1,000件超の注記**
+- [x] **T4: 1,000件超の注記**
   - 対応 AC: AC-9a（注記の部分）
   - 先に書くテスト: `features/search/components/search-results.test.tsx` に追加
     - `it.each`: `AC-9a: 総件数が $totalCount のとき「上位1,000件まで表示します」を表示する`（1001、50000）
@@ -320,3 +320,4 @@ result.totalCount >= 1 && page > maxPage     → <OutOfRangeNotice target={{ kin
   - 0010: 取得を `<Suspense>` で包む構成に変える場合、範囲外の 2 段の判定（API の前と後）も一緒に移し、本計画の T5 のテストを移植してから変える。`loading.tsx` を置いた後も、ページネーションのリンクの先読みで検索 API が呼ばれないことを確認する。0件の専用表示（AC-17）は AC-9d の分岐（総件数 0 は範囲外にしない）の中に置く。
   - 0011: 範囲外の案内の `role="status"`（AC-26d・提案 P1）、ページ移動後のスクロール・フォーカス（AC-26b・提案 P2）、番号のリンク名（提案 P4）、フォーカスの見た目と 320px での押しやすさ（AC-27）。
 - 2026-10-08: 人間が推奨どおりで承認（Status: in-progress）。決定事項: Q1 押せない「前へ」「次へ」は `<span role="link" aria-disabled="true">`（`href`・`tabindex` なし。MDN の `aria-disabled` の対応ロールに `link` が含まれることを確認。仕様 6.1 の文言を更新済み）／Q2 現在ページの番号もリンクにして `aria-current="page"`／Q3 番号リンクの名前は数字だけ／Q4 注記は `SearchResults` の総件数の直後／Q5 純粋関数は `features/search/lib/`／Q6 前提外の入力は決めない・テストしない／Q7 範囲外でも `h1` は残す／Q8 「…」は文字として表示（`aria-hidden` なし）／Q9 提案 P1〜P5 は採らない。`/issue split` はせず 1 PR で進める。
+- 2026-10-08: T4 の検出力確認。注記の条件を `totalCount > SEARCH_RESULT_LIMIT` から `>=` に一時的に変えると、「総件数が 1000 のとき注記を表示しない」だけが失敗した（復元済み）。
