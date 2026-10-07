@@ -16,14 +16,20 @@ beforeEach(() => {
 
 // async な Server Component は JSX としては描画できないため、
 // ページ関数を直接呼んで await し、返った要素を描画する。
+async function renderPage(
+  searchParams: Record<string, string | string[] | undefined>,
+) {
+  render(
+    await Page({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve(searchParams),
+    }),
+  );
+}
+
 describe("トップページ", () => {
   it("AC-21b: トップページを描画するとプレースホルダーの見出しが表示される", async () => {
-    render(
-      await Page({
-        params: Promise.resolve({}),
-        searchParams: Promise.resolve({}),
-      }),
-    );
+    await renderPage({});
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "GitHub リポジトリ検索",
@@ -31,12 +37,7 @@ describe("トップページ", () => {
   });
 
   it("AC-1: トップページにラベル「キーワード」の入力欄と「検索」ボタンがある", async () => {
-    render(
-      await Page({
-        params: Promise.resolve({}),
-        searchParams: Promise.resolve({}),
-      }),
-    );
+    await renderPage({});
 
     expect(
       screen.getByRole("searchbox", { name: "キーワード" }),
@@ -45,12 +46,7 @@ describe("トップページ", () => {
   });
 
   it('AC-22c: URL が /?q=react&page=3 のとき入力欄の初期値が "react" になる', async () => {
-    render(
-      await Page({
-        params: Promise.resolve({}),
-        searchParams: Promise.resolve({ q: "react", page: "3" }),
-      }),
-    );
+    await renderPage({ q: "react", page: "3" });
 
     expect(screen.getByRole("searchbox", { name: "キーワード" })).toHaveValue(
       "react",
@@ -58,12 +54,7 @@ describe("トップページ", () => {
   });
 
   it("AC-22c: URL に q が無いとき入力欄は空になる", async () => {
-    render(
-      await Page({
-        params: Promise.resolve({}),
-        searchParams: Promise.resolve({}),
-      }),
-    );
+    await renderPage({});
 
     expect(screen.getByRole("searchbox", { name: "キーワード" })).toHaveValue(
       "",
@@ -71,12 +62,7 @@ describe("トップページ", () => {
   });
 
   it("AC-22c: q が空白のみのとき入力欄は空になる", async () => {
-    render(
-      await Page({
-        params: Promise.resolve({}),
-        searchParams: Promise.resolve({ q: "   " }),
-      }),
-    );
+    await renderPage({ q: "   " });
 
     expect(screen.getByRole("searchbox", { name: "キーワード" })).toHaveValue(
       "",

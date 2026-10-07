@@ -163,6 +163,8 @@ describe("SearchForm: 空入力の案内", () => {
       await user.click(screen.getByRole("button", { name: "検索" }));
 
       expect(push).not.toHaveBeenCalled();
+      // 空入力では遷移しない（push が呼ばれない）ので、0006 の検索（サーバー側の API 呼び出し）も走らない。
+      // このフォーム自体は fetch を呼ばないため、0006 で同じ AC を回帰確認するときの意図を残す。
       expect(fetchMock).not.toHaveBeenCalled();
       expect(screen.getByRole("alert")).toHaveTextContent(GUIDE);
       expect(input).toBeInvalid();

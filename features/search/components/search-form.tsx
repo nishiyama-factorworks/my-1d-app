@@ -37,7 +37,7 @@ export function SearchForm({ initialQuery }: { initialQuery: string }) {
       <label htmlFor={inputId} className="text-sm font-medium">
         キーワード
       </label>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           id={inputId}
           type="search"
@@ -45,7 +45,7 @@ export function SearchForm({ initialQuery }: { initialQuery: string }) {
           defaultValue={initialQuery}
           aria-invalid={guide !== "" ? true : undefined}
           aria-describedby={guide !== "" ? guideId : undefined}
-          className="flex-1 rounded border px-3 py-2"
+          className="w-full min-w-0 rounded border px-3 py-2 sm:flex-1"
         />
         <button type="submit" className="rounded bg-black px-4 py-2 text-white">
           検索

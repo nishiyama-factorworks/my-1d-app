@@ -1,6 +1,6 @@
 # 0005: 検索フォーム 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #5
 - 対応する仕様: docs/specs/0005-search-form.md
@@ -52,7 +52,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - Next.js 16.3.8 の `page.tsx` は `searchParams: Promise<{ [key: string]: string | string[] | undefined }>` を受け取り、`async/await` か `use` で読む（`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/page.md` 67〜121行）。`searchParams` を使うとページは動的レンダリングになる（同 119行）。0006 で検索結果を描くので問題ない。
 - 型は `PageProps<"/">`（同 123〜139行。グローバルの補助型。`next typegen` が `.next/types/routes.d.ts` に生成し、`params` と `searchParams` の両方を持つ）。`app/layout.tsx` の `LayoutProps<"/">` とそろえる。`Record<string, string | string[] | undefined>` は `SearchParamsInput`（`Readonly<...>`）にそのまま渡せる。
 - `const { q } = parseSearchParams(await searchParams)` とし、`initialQuery = q ?? ""` を渡す。`page` はこのタスクでは使わない（0006 で使う）。
-- **`key={initialQuery}` を付ける理由**: 同じページ内の `router.push` やブラウザの戻る・進むでは、Server Component が再描画されても Client Component の state は保持される。`useState(initialQuery)` の初期値は最初の描画でしか使われないため、`key` が無いと URL の `q` が変わっても入力欄が古い値のまま残り、AC-22c（URL の `q` が初期値になる）と後続の 0009 AC-15d（戻った先の入力欄が復元される）を満たせない。`use-router.md` の `bfcacheId` の節も「データから key を導く」方法を推奨している（180行）。なお `next.config.ts` で `cacheComponents` は有効にしていない。
+- **`key={initialQuery}` を付ける理由**: 同じページ内の `router.push` やブラウザの戻る・進むでは、Server Component が再描画されても Client Component の state は保持される。入力欄は非制御（`defaultValue={initialQuery}`）で、`defaultValue` も最初の描画でしか使われないため、`key` が無いと URL の `q` が変わっても入力欄が古い値のまま残り、AC-22c（URL の `q` が初期値になる）と後続の 0009 AC-15d（戻った先の入力欄が復元される）を満たせない。`use-router.md` の `bfcacheId` の節も「データから key を導く」方法を推奨している（180行）。なお `next.config.ts` で `cacheComponents` は有効にしていない。
 - 同じ `q` で再送信したとき（例: `/?q=react&page=3` で `react` を検索）は `key` が変わらず再マウントされない。そのため案内の消去はイベントハンドラで明示的に行う（1.2 (c)）。
 
 **(c) 空入力の案内とアクセシビリティ**
@@ -149,7 +149,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `app/page.tsx`、`app/page.test.tsx`、`lib/app-config.ts`（3 ファイル）
   - 完了条件: `pnpm test` PASS、`pnpm typecheck`（`next typegen` を含む）PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: 文書の更新と最終確認**
+- [x] **T5: 文書の更新と最終確認**
   - 対応 AC: なし（文書・検証）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（3節に `features/search/`: 検索フォーム、5節に「Client Component は `features/search/components/search-form.tsx` のみ。`lib/github/` を読み込まない」）、本計画の進捗メモ（2 ファイル）
@@ -230,3 +230,8 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-08: T0 人間承認のうえ追加: @testing-library/user-event 14.6.7（`pnpm add -D` 経由）。
 - 2026-10-08: RED / GREEN の記録。T1: `<form />` だけの仮実装で 6 件すべてが要素なしで失敗 → GREEN。T2: 何もしない送信ハンドラで 11 件中 5 件が失敗（`push` が呼ばれない）→ GREEN。T3: 空なら何もしない実装で 15 件中 4 件が失敗（案内が出ない）→ GREEN（`toBeInvalid` 等は手前の検証で落ちるため RED では未到達だったが、GREEN で通過）。T4: `app/page.tsx` 変更前に 5 件中 4 件が失敗、AC-21b は新しい呼び出し方でも通過 → `render(await Page({ params, searchParams }))` の描画方法が動くことを確認 → GREEN。いずれも期待値の不一致で、インポート・構文エラーではない。
 - 2026-10-08: T5 の確認。`bash scripts/verify.sh`（full）: typecheck / lint / test（15 ファイル 306 件）/ build がすべて PASS。手動確認のうち、ビルド済みアプリ（`next start`）の実際の HTML で確認できたもの: `/?q=react&page=3` で入力欄の値が `react`、ラベルと入力欄の関連付け、`/?q=%E6%97%A5…` が `日本語 & react` として描画、`q` なしで値が空、`role="search"` と `role="alert"`。**未確認（ブラウザでの操作が必要）**: ボタン・Enter での実際の遷移、日本語 IME の変換確定の Enter で送信されないこと、ブラウザの戻る・進むで入力欄が URL の `q` に追従すること、幅 320px 程度での崩れ。
+- 2026-10-08: 実装の補足。入力欄は制御コンポーネントではなく非制御（`defaultValue` と送信時の `FormData`）で実装した（`key` による再マウントで URL の `q` に追従する点は変わらない）。計画 1.2 の記述を実装に合わせて直した。
+- 2026-10-08: T3 の RED の方法について。実際は「空なら何もしない実装」で RED を確認したため、`push` が呼ばれないことのアサーションは RED の時点では失敗していない。レビューの指摘を受け、実装を一時的に壊して検出力を確認した（`if (keyword === null)` を常に偽にして空入力でも遷移させると、AC-3 の 4 件が失敗。復元済み）。
+- 2026-10-08: レビュー（reviewer: Approve / security-reviewer: Critical・High・Medium なし）への対応。Major: 計画のリスク表どおり狭い画面への対策のクラス（`flex-col sm:flex-row`、入力欄の `w-full min-w-0`）を付けた。**幅 320px 程度での目視は未実施**。Minor: `app/page.test.tsx` の描画の重複を `renderPage` にまとめた、`fetch` スタブの意図をコメントに残した、計画の記述を実装に合わせた。
+- 2026-10-08: 申し送り（本タスクでは実装しない）。0011: (a) 空のまま 2 回続けて送信すると `role="alert"` の文言が変わらず支援技術に読み上げられない可能性（仕様 AC-26d の要件は満たしている）、(b) セキュリティヘッダ（CSP、`frame-ancestors`、`Referrer-Policy` など）が未設定（`next.config.ts` が空。0005 の持ち込みではない）。0006 / 0010: 巨大な `q` は HTML と RSC ペイロードに入るので、API 呼び出しに組み込む際に 256 文字超の扱い（切り詰めか検証エラー）を一貫させる。
+- 2026-10-08: 最終検証。レビュー対応後に `bash scripts/verify.sh`（full）を再実行し、typecheck / lint / test（15 ファイル 306 件）/ build がすべて PASS。Status は done に更新済み。
