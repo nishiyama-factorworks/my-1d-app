@@ -121,7 +121,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `package.json`、`pnpm-lock.yaml`（2 ファイル、いずれもコマンド経由）
   - 完了条件: 承認内容（パッケージ名・バージョン・承認日）を進捗メモに記録。`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: 型定義とエラー分類**
+- [x] **T2: 型定義とエラー分類**
   - 対応 AC: AC-24a、AC-24b、AC-24c、AC-24d（分類規則の単体部分）
   - 先に書くテスト: `lib/github/errors.test.ts`（`// @vitest-environment node`）
     - `AC-24a: 429 のとき RATE_LIMIT に分類される`
