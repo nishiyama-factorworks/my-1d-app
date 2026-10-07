@@ -107,7 +107,7 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: 【人間の承認が必要】`server-only` の追加**
+- [x] **T1: 【人間の承認が必要】`server-only` の追加**
   - 対応 AC: AC-23c の前提（仕様 4.1、9節）
   - 先に書くテスト: なし（依存追加のみ。利用は T4、検証は T7）
   - 手順:
@@ -316,3 +316,4 @@ AC と検証手段の対応:
 
 - 2026-10-07: 計画作成（draft）。未着手。人間の承認後に T1（`server-only` 追加の承認）から開始する。要確認事項 Q1〜Q8 の回答を反映してから `Status: in-progress` にする。
 - 2026-10-07: 人間が推奨どおりで承認（Status: in-progress）。決定事項: Q1〜Q3 採用（`q` 空・`page`/`perPage` 不正は `VALIDATION`、`owner`/`repo` は許可リスト検証で不正なら `NOT_FOUND`。いずれも `fetch` を呼ばない）→ 仕様 0003 に AC-5c・AC-5d・AC-13c を追加し、タスク T5b を T5 の後に追加／Q4（検索の 404・詳細の 422 は `UPSTREAM`）、Q5（`retry-after` は使わない。二次レート制限は `UPSTREAM`）、Q6（401 は `UPSTREAM`）は計画の解釈どおり／Q7 ADR 不要／Q8 手書きの型ガード／`/issue split` はせず 1 PR。提案 P1 は 0006 の計画時に判断、P2・P3 は本タスクに入れない。
+- 2026-10-07: T1 人間承認のうえ追加: server-only 0.0.1（MIT、最終公開 2022-09-03、依存なし）。`node_modules/server-only/package.json` の exports が react-server→./empty.js、default→./index.js であることを確認済み（T7 の前提）。
