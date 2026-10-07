@@ -103,7 +103,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `package.json`、`pnpm-lock.yaml`（`pnpm add -D @testing-library/user-event` で更新。承認画面で人間が許可する）
   - 完了条件: `pnpm test` と `bash scripts/verify.sh --quick` が PASS。コミットは `chore(deps): ...`。
 
-- [ ] **T1: 検索フォームの表示と初期値**
+- [x] **T1: 検索フォームの表示と初期値**
   - 対応 AC: AC-1、AC-22c（コンポーネント単位）
   - 先に書くテスト: `features/search/components/search-form.test.tsx`
     - `AC-1: ラベル「キーワード」の入力欄と「検索」ボタンが表示される`（`getByRole("searchbox", { name: "キーワード" })`、`getByRole("button", { name: "検索" })`。ラベルとの関連付けを name で確かめる。0011 AC-26a の前提にもなる）
