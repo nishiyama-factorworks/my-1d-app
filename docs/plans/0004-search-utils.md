@@ -111,7 +111,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: 定数と最大ページ数の計算**
+- [x] **T1: 定数と最大ページ数の計算**
   - 対応 AC: AC-25f
   - 作業前確認: `git show feat/3-github-api-client:lib/github/...` で 0003 の命名（関数名・定数名・ファイル名の付け方）を確認し、本計画の名前と大きくずれる場合は実装前に報告する（コードは参照のみ。import しない）。
   - 先に書くテスト: `lib/search/pagination.test.ts`（`// @vitest-environment node`）
