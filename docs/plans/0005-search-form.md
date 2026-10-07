@@ -138,7 +138,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `features/search/components/search-form.tsx`、`features/search/components/search-form.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: トップページへの組み込みとスモークテストの更新**
+- [x] **T4: トップページへの組み込みとスモークテストの更新**
   - 対応 AC: AC-1、AC-22c（ページ単位）、0002 の AC-21b（検証内容を維持）
   - 先に書くテスト: `app/page.test.tsx` を更新（`next/navigation` のモックを追加。描画は `render(await Page({ params: Promise.resolve({}), searchParams: Promise.resolve(...) }))`）
     - `AC-21b: トップページを描画するとプレースホルダーの見出しが表示される`（検証内容は変えない: `h1` が「GitHub リポジトリ検索」。呼び出し方だけ更新。仕様 6.1 の指示による）
