@@ -47,7 +47,7 @@ Status: in-progress <!-- draft | in-progress | done  ※ SessionStart hook が "
   - 注意: `async` な Server Component は Testing Library で直接描画できないため、ページは同期関数のままにする。`vitest` のグローバル API は使わず、`import { describe, it, expect } from "vitest"` で明示 import する（tsconfig の型設定を増やさないため）。
   - 完了条件: `pnpm test` が終了コード 0、`pnpm typecheck` `pnpm lint` も PASS。
 
-- [ ] **T2: 構成検査テスト（Next.js バージョン・`app/`・tsconfig strict・test script）**
+- [x] **T2: 構成検査テスト（Next.js バージョン・`app/`・tsconfig strict・test script）**
   - 対応 AC: AC-21b
   - 先に書くテスト: `tests/foundation/project-structure.test.ts`（`// @vitest-environment node`）
     - `AC-21b: package.json の next のメジャーバージョンが16以上である`（`dependencies.next` の範囲表記から最小メジャーを取り出して比較）
