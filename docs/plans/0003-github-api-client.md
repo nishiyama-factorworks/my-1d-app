@@ -237,6 +237,23 @@ function isGitHubApiError(e: unknown): e is GitHubApiError;
   - 実装対象: `lib/github/client.ts`、`lib/github/client.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
+### レビュー指摘への追加タスク（人間が採用。仕様の AC-5e〜5g、13d・13e、23e、24f を追加済み）
+
+- [ ] **T9: HTTP 層の多層防御（AC-23e、AC-24f、エラー本文の破棄）**
+  - 先に書くテスト: `lib/github/http.test.ts`（AC-23e: `//evil.example/x` と絶対 URL を渡すと `fetch` を呼ばず `VALIDATION`、有効なパスは成功。エラー応答（429 等）で本文ストリームが破棄される＝`body.cancel` 相当が呼ばれること）、`lib/github/errors.test.ts`（AC-24f: `x-ratelimit-reset` が桁数の大きい値のとき `resetAt` が `undefined`）
+  - 実装対象: `lib/github/http.ts`（URL 組み立て後に `url.origin !== BASE_URL` で失敗、`!res.ok` で `res.body?.cancel()`）、`lib/github/errors.ts`（`Number.isSafeInteger` と `Invalid Date` の確認）
+  - 完了条件: `pnpm test` PASS、`verify --quick` PASS。
+
+- [ ] **T10: レスポンスの安全性（AC-5f、AC-5g、AC-13d、AC-13e）**
+  - 先に書くテスト: `lib/github/mappers.test.ts`（`private: true` の要素の除外と `totalCount` が API の値のままであること、詳細の `private: true` は `NOT_FOUND`、`avatar_url` / `html_url` の https・ホスト検証と `UPSTREAM`。`javascript:`、`http:`、別ホスト、`githubusercontent.com` に似せたホスト（`evilgithubusercontent.com`）を含める）
+  - 実装対象: `lib/github/mappers.ts`。**テストデータの更新**: `client.test.ts` と `token-leak.test.ts` の `example.com` 系 URL を実際の GitHub のホスト（`avatars.githubusercontent.com`）に直す（仕様変更に伴うデータ更新で、期待値は弱めない）
+  - 完了条件: `pnpm test` PASS。
+
+- [ ] **T11: `q` の長さ上限（AC-5e）と `.env.example` のトークン権限の明記**
+  - 先に書くテスト: `lib/github/client.test.ts`（257 文字で `fetch` を呼ばず `VALIDATION`、256 文字は成功）
+  - 実装対象: `lib/github/client.ts`、`.env.example`（コメントに「公開リポジトリの読み取り専用トークンに限る」を追記。コメントに `KEY=` 形式を書かない。`tests/foundation/env-files.test.ts` で検査される）
+  - 完了条件: `pnpm test` PASS。
+
 ## 4. テスト方針
 
 | 種類 | 対象 | ファイル | 環境 |
@@ -297,14 +314,14 @@ AC と検証手段の対応:
 
 ## 7. 要確認事項
 
-- [ ] **Q1: `q` が空（空文字・空白のみ）のときの扱い。** 仕様 6.2 は「必須」とだけ書き、AC が無い。推奨: `fetch` を呼ばずに `VALIDATION` で失敗させる（検索のエラー種別に既にあり、0005/0006 の入力チェックをすり抜けた場合の防御）。代替: 検証しない（GitHub が 422 を返し、結局 `VALIDATION` になる。API 呼び出しを 1 回消費する）。
-- [ ] **Q2: `page` が 1 未満・整数でない、`perPage` が範囲外（GitHub は 1〜100）のときの扱い。** 推奨: `fetch` を呼ばずに `VALIDATION` で失敗させる（補正は 0004 の責務で、ここでは黙って補正しない）。代替: 検証しない。
-- [ ] **Q3: `owner` / `repo` の検証。** 推奨: GitHub の命名規則に沿った許可リスト（`owner`: 英数字とハイフン、1〜39 文字／`repo`: 英数字と `.` `_` `-`、1〜100 文字、`.` と `..` は不可）に合わない値は `fetch` を呼ばずに `NOT_FOUND` で失敗させる（詳細のエラー種別に `VALIDATION` が無いため。0008 では 404 表示になる）。最低限案: `encodeURIComponent` に加え、`.` / `..` のセグメントだけ拒否する。どちらも仕様に無い要件なので、採用する場合は仕様 0003 の 5節に AC を追記するか判断してほしい。
-- [ ] **Q4: エンドポイントごとの分類。** 仕様 6.2 のエラー列に合わせて「検索の 404 → `UPSTREAM`」「詳細の 422 → `VALIDATION` ではなく `UPSTREAM`」と解釈した。共通の分類（404 は常に `NOT_FOUND`、422 は常に `VALIDATION`）でよければ `endpoint` 引数を無くせる。
-- [ ] **Q5: `429` の `retry-after` ヘッダ。** GitHub の二次レート制限は `retry-after`（秒）を返すことがある。仕様は「リセット時刻が分かる場合は保持」とだけ書いている。本計画では `x-ratelimit-reset` だけを読み、`retry-after` は使わない（現在時刻に依存する計算になるため）。使う場合は T2 に追加する。また、`retry-after` 付きで `x-ratelimit-remaining` が 0 でない 403（二次レート制限）は、AC-24a の条件に当たらないため `UPSTREAM` になる。`RATE_LIMIT` に含めるか。
-- [ ] **Q6: 401（トークンが無効）の扱い。** AC-24d の「その他の想定外の応答」として `UPSTREAM` にする。トークン無しで再試行するなどの特別扱いはしない。この解釈でよいか。
-- [ ] **Q7: `server-only` 採用の ADR の要否。** 本計画では不要とした（6節）。
-- [ ] **Q8: レスポンス検証は手書きの型ガード（選択肢 A）でよいか。** zod（選択肢 B）にする場合は、依存追加の承認と ADR のタスクを T2 の前に追加する。
+- [x] **Q1: `q` が空（空文字・空白のみ）のときの扱い。** 仕様 6.2 は「必須」とだけ書き、AC が無い。推奨: `fetch` を呼ばずに `VALIDATION` で失敗させる（検索のエラー種別に既にあり、0005/0006 の入力チェックをすり抜けた場合の防御）。代替: 検証しない（GitHub が 422 を返し、結局 `VALIDATION` になる。API 呼び出しを 1 回消費する）。
+- [x] **Q2: `page` が 1 未満・整数でない、`perPage` が範囲外（GitHub は 1〜100）のときの扱い。** 推奨: `fetch` を呼ばずに `VALIDATION` で失敗させる（補正は 0004 の責務で、ここでは黙って補正しない）。代替: 検証しない。
+- [x] **Q3: `owner` / `repo` の検証。** 推奨: GitHub の命名規則に沿った許可リスト（`owner`: 英数字とハイフン、1〜39 文字／`repo`: 英数字と `.` `_` `-`、1〜100 文字、`.` と `..` は不可）に合わない値は `fetch` を呼ばずに `NOT_FOUND` で失敗させる（詳細のエラー種別に `VALIDATION` が無いため。0008 では 404 表示になる）。最低限案: `encodeURIComponent` に加え、`.` / `..` のセグメントだけ拒否する。どちらも仕様に無い要件なので、採用する場合は仕様 0003 の 5節に AC を追記するか判断してほしい。
+- [x] **Q4: エンドポイントごとの分類。** 仕様 6.2 のエラー列に合わせて「検索の 404 → `UPSTREAM`」「詳細の 422 → `VALIDATION` ではなく `UPSTREAM`」と解釈した。共通の分類（404 は常に `NOT_FOUND`、422 は常に `VALIDATION`）でよければ `endpoint` 引数を無くせる。
+- [x] **Q5: `429` の `retry-after` ヘッダ。** GitHub の二次レート制限は `retry-after`（秒）を返すことがある。仕様は「リセット時刻が分かる場合は保持」とだけ書いている。本計画では `x-ratelimit-reset` だけを読み、`retry-after` は使わない（現在時刻に依存する計算になるため）。使う場合は T2 に追加する。また、`retry-after` 付きで `x-ratelimit-remaining` が 0 でない 403（二次レート制限）は、AC-24a の条件に当たらないため `UPSTREAM` になる。`RATE_LIMIT` に含めるか。
+- [x] **Q6: 401（トークンが無効）の扱い。** AC-24d の「その他の想定外の応答」として `UPSTREAM` にする。トークン無しで再試行するなどの特別扱いはしない。この解釈でよいか。
+- [x] **Q7: `server-only` 採用の ADR の要否。** 本計画では不要とした（6節）。
+- [x] **Q8: レスポンス検証は手書きの型ガード（選択肢 A）でよいか。** zod（選択肢 B）にする場合は、依存追加の承認と ADR のタスクを T2 の前に追加する。
 
 ### 提案（仕様外。本計画のタスクには含めない）
 
@@ -320,3 +337,6 @@ AC と検証手段の対応:
 - 2026-10-07: T4 実装後、本文の読み取り中にタイムアウトすると UPSTREAM になる点が AC-24e（タイムアウトは NETWORK）と食い違うと判明。テストを先に追加して RED（UPSTREAM が返る）を確認し、`controller.signal.aborted` のとき NETWORK にして GREEN。`vi.mock("server-only")` は node_modules のパッケージに効くことを確認済み。
 - 2026-10-07: T6 完了。検出力確認（いずれも本番コードを一時的に壊して該当テストの失敗を確認し、git checkout で復元）: (1) GitHubApiError の message にトークンを含める → 失敗、(2) NETWORK エラーに元の例外を cause として渡す → 失敗（search/repo 各の接続失敗・タイムアウト 計4件）、(3) NETWORK 送出前に console.error でヘッダを出す → 失敗（同 計4件）。
 - 2026-10-07: T7 完了。検出力確認: `http.ts` と `client.ts` から `import "server-only"` を一時的に外すと、拒否を検査する3件と先頭 import を検査する2件が失敗（server-only 単体の1件は対象ファイルに依存しないため PASS のまま）。復元済み。手動のビルド確認: 一時的に `"use client"` の部品から `@/lib/github` を import した `app/server-only-check/` を作って `pnpm build` を実行すると、終了コード 1 で失敗し、エラーに `server-only` と `Client Component Browser`（`./lib/github/client.ts`）が出た。一時ファイルを削除すると `pnpm build` は終了コード 0 に戻った（コミットしていない）。
+- 2026-10-07: RED / GREEN の記録（レビュー指摘による追記）。T2: 仮実装（常に UPSTREAM）で 13 件中 7 件が期待値の不一致で失敗 → 分類を実装して GREEN。T3: 仮実装（空の値）で 25 件中 22 件が失敗 → 型ガードで変換して GREEN。T4: 仮実装（not implemented）で 10 件が失敗 → GREEN。T5: 仮実装で 28 件が失敗 → GREEN。T5b: 検証なしの実装で 19 件が失敗（不正な入力でも fetch が呼ばれる）→ 検証を追加して GREEN。
+- 2026-10-07: Q1〜Q8 は回答済み（推奨どおり）。Q3 のとおり許可リストは AC-13c として仕様に追加済み。
+- 2026-10-07: レビュー（reviewer / security-reviewer、Critical・High 無し）の指摘を人間が採用し、仕様に AC-5e〜5g・13d・13e・23e・24f を追加。タスク T9〜T11 を追加した。private リポジトリの漏えい（Medium）は「文書化 + 実装で防御」。0010 の計画時に、エラーは種別の判定をサーバ側で行い Client には表示用の値として渡す（`error.tsx` に届くエラーはシリアライズされ `instanceof` が使えない見込み。Next.js 公式ドキュメントで未確認）ことを確認する。
