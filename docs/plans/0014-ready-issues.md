@@ -304,7 +304,9 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `scripts/lib/ready-issues-cli.mjs`、`scripts/lib/ready-issues-cli.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T7: CLI（`--apply` の更新）と入口**
+- [x] **T7: CLI（`--apply` の更新）と入口**
+  - 進捗: RED（49 件中 7 件失敗）→ GREEN（verify --quick PASS）。変異確認: 更新対象の絞り込み・終了コード・失敗時の続行・`--apply` の有無・成功件数で検出。空 URL の防御は初め未検出だったため、テスト（AC-20 の補強）を追加し、変異で検出されることを確認した。
+  - 実機確認（2026-10-08）: `node scripts/ready-issues.mjs`（引数なし）で、実際の Issue から「Ready にできる: #8 0008」「待ち: #9〜#13」が表示された（終了コード 0）。`--project` / `--apply` の実機実行は `project` スコープが無いため未実施。
   - 対応 AC: AC-15、AC-16、AC-20、AC-17（実プロセス）
   - 先に書くテスト:
     - `scripts/lib/ready-issues-cli.test.ts` に追加

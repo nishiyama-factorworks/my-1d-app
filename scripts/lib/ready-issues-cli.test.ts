@@ -4,6 +4,7 @@ import { runReadyIssues } from "./ready-issues-cli.mjs";
 import {
   fieldListArgs,
   issueListArgs,
+  itemEditArgs,
   itemListArgs,
   repoViewArgs,
 } from "./ready-issues-gh.mjs";
@@ -415,5 +416,173 @@ describe("仕様 7 節 / gh の出力 / AC-21", () => {
     const text = t.out.join("\n");
     expect(text).toContain("#8 0008 [31m赤い詳細");
     expect(text).not.toContain("\x1b");
+  });
+});
+
+describe("AC-15/16/20 ほか: --apply による Status の更新", () => {
+  const readyIssues = (numbers: number[]) => [
+    issue(3, "[feat] 0003 API", "CLOSED"),
+    ...numbers.map((n) => issue(n, `[feat] 00${n} 機能${n}`)),
+  ];
+  const readySpecs = (numbers: number[]) => [
+    { name: "0003-api.md", text: dependsOn("なし") },
+    ...numbers.map((n) => ({
+      name: `00${n}-x.md`,
+      text: dependsOn("0003"),
+    })),
+  ];
+  const board = (entries: [number, string][]) =>
+    JSON.stringify({
+      items: entries.map(([n, status]) => item(`i${n}`, n, status)),
+      totalCount: entries.length,
+    });
+  const urlOf = (n: number) => `https://github.com/owner/repo/issues/${n}`;
+
+  // item-edit だけ Issue ごとに結果を変えたいので、runGh を自前で組む
+  function setupApply(
+    editResult: (url: string) => Error | null,
+    items: string,
+    numbers: number[],
+  ) {
+    const calls: string[][] = [];
+    const out: string[] = [];
+    const err: string[] = [];
+    const runGh = async (args: string[]) => {
+      calls.push(args);
+      if (args[0] === "issue") {
+        return { stdout: JSON.stringify(readyIssues(numbers)) };
+      }
+      if (args[0] === "repo") {
+        return { stdout: JSON.stringify({ nameWithOwner: "owner/repo" }) };
+      }
+      if (args[1] === "field-list") return { stdout: FIELDS_OK };
+      if (args[1] === "item-list") return { stdout: items };
+      if (args[1] === "item-edit") {
+        const failure = editResult(args[args.indexOf("--url") + 1]);
+        if (failure) throw failure;
+        return { stdout: "" };
+      }
+      throw new Error("unexpected gh call");
+    };
+    const run = () =>
+      runReadyIssues({
+        argv: ["--project", "3", "--apply"],
+        runGh,
+        readSpecFiles: async () => readySpecs(numbers),
+        out: (line) => out.push(line),
+        err: (line) => err.push(line),
+      });
+    return { run, calls, out, err };
+  }
+
+  const editCalls = (calls: string[][]) =>
+    calls.filter((c) => c.includes("item-edit"));
+
+  it("AC-15: A=Backlog・B=In progress・C=ボードに無いとき、item-edit を A に対して 1 回だけ呼び、B と C の理由を表示する", async () => {
+    const t = setupApply(
+      () => null,
+      board([
+        [20, "Backlog"],
+        [21, "In progress"],
+      ]),
+      [20, 21, 22],
+    );
+    expect(await t.run()).toBe(0);
+    expect(editCalls(t.calls)).toEqual([itemEditArgs(3, "owner", urlOf(20))]);
+    const text = t.out.join("\n");
+    expect(text).toContain("#21 0021 機能21: 変更しない（現在: In progress）");
+    expect(text).toContain("#22 0022 機能22: ボードに無い");
+    expect(text).toContain("更新: 成功 1 件 / 失敗 0 件");
+    expect(t.err).toEqual([]);
+  });
+
+  it("AC-16: A が Ready の状態で再実行すると item-edit を呼ばず「成功 0 件 / 失敗 0 件」で終了コード 0", async () => {
+    const t = setupApply(() => null, board([[20, "Ready"]]), [20, 21]);
+    expect(await t.run()).toBe(0);
+    expect(hasItemEdit(t.calls)).toBe(false);
+    expect(t.out.join("\n")).toContain("更新: 成功 0 件 / 失敗 0 件");
+  });
+
+  it("AC-20: A の更新は成功・B の更新は失敗のとき、B を表示して続行し「成功 1 件 / 失敗 1 件」で終了コード 1", async () => {
+    const t = setupApply(
+      (url) =>
+        url === urlOf(21)
+          ? Object.assign(new Error("gh failed"), {
+              stderr: "GraphQL: \x1b[31mboom happened\n",
+            })
+          : null,
+      board([
+        [20, "Backlog"],
+        [21, "Backlog"],
+      ]),
+      [20, 21],
+    );
+    expect(await t.run()).toBe(1);
+    expect(editCalls(t.calls)).toEqual([
+      itemEditArgs(3, "owner", urlOf(20)),
+      itemEditArgs(3, "owner", urlOf(21)),
+    ]);
+    const errText = t.err.join("\n");
+    expect(errText).toContain("#21");
+    expect(errText).toContain("GraphQL: [31mboom happened");
+    expect(errText).not.toContain("\x1b");
+    expect(t.out.join("\n")).toContain("更新: 成功 1 件 / 失敗 1 件");
+  });
+
+  it("AC-18: item-edit が missing required scopes で失敗したとき案内を表示し、件数を表示して終了コード 1", async () => {
+    const t = setupApply(
+      () => scopeError(),
+      board([[20, "Backlog"]]),
+      [20, 21],
+    );
+    expect(await t.run()).toBe(1);
+    expect(t.err.join("\n")).toContain(
+      "gh auth refresh -s project をご自身のターミナルで実行してください",
+    );
+    expect(t.out.join("\n")).toContain("更新: 成功 0 件 / 失敗 1 件");
+  });
+
+  it("AC-13: --apply が無い --project 3 では Backlog の候補があっても item-edit を呼ばない", async () => {
+    const t = setup(
+      ["--project", "3"],
+      {
+        issueList: JSON.stringify(readyIssues([20])),
+        itemList: board([[20, "Backlog"]]),
+      },
+      readySpecs([20]),
+    );
+    expect(await t.run()).toBe(0);
+    expect(hasItemEdit(t.calls)).toBe(false);
+    expect(t.out.join("\n")).not.toContain("更新: 成功");
+  });
+
+  it("AC-21: item-edit の失敗理由に ESC が含まれても out/err に \x1b が出ない", async () => {
+    const t = setupApply(
+      () =>
+        Object.assign(new Error("gh failed"), {
+          stderr: "bad \x1b[2J\x1b]0;title\x07 thing",
+        }),
+      board([[20, "Backlog"]]),
+      [20],
+    );
+    expect(await t.run()).toBe(1);
+    expect(t.out.join("\n")).toContain("更新: 成功 0 件 / 失敗 1 件");
+    expect(t.out.join("\n")).not.toContain("\x1b");
+    expect(t.err.join("\n")).toContain("#20");
+    expect(t.err.join("\n")).not.toContain("\x1b");
+  });
+});
+
+describe("--apply: Issue の URL が取れないとき", () => {
+  it("AC-20: URL が空の Backlog の候補は gh を呼ばずに失敗として数え、終了コード 1", async () => {
+    const t = setup(["--project", "3", "--apply"], {
+      issueList: JSON.stringify(
+        BASIC_ISSUES.map((i) => (i.number === 8 ? { ...i, url: "" } : i)),
+      ),
+    });
+    expect(await t.run()).toBe(1);
+    expect(hasItemEdit(t.calls)).toBe(false);
+    expect(t.err.join("\n")).toContain("#8 の更新に失敗しました");
+    expect(t.out.join("\n")).toContain("更新: 成功 0 件 / 失敗 1 件");
   });
 });

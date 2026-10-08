@@ -12,6 +12,7 @@ import {
   fieldListArgs,
   isMissingScopes,
   issueListArgs,
+  itemEditArgs,
   itemListArgs,
   parseFieldList,
   parseIssueList,
@@ -246,5 +247,30 @@ export async function runReadyIssues({ argv, runGh, readSpecFiles, out, err }) {
   });
   out("== Project の更新計画 ==");
   for (const line of formatPlan(plan)) out(line);
-  return 0;
+  if (!options.apply) return 0;
+
+  // 1 件ずつ順に更新する。1 件の失敗で止めず、最後に件数を報告する
+  let succeeded = 0;
+  let failed = 0;
+  let scopeGuideShown = false;
+  for (const entry of plan) {
+    if (entry.action !== "update") continue;
+    try {
+      if (entry.issueUrl === "")
+        throw new Error("Issue の URL を取得できません");
+      await runGh(itemEditArgs(options.project, owner, entry.issueUrl));
+      succeeded += 1;
+    } catch (error) {
+      failed += 1;
+      err(
+        `#${entry.issueNumber} の更新に失敗しました: ${describeFailure(error)}`,
+      );
+      if (isScopeFailure(error) && !scopeGuideShown) {
+        err(AUTH_GUIDE);
+        scopeGuideShown = true;
+      }
+    }
+  }
+  out(`更新: 成功 ${succeeded} 件 / 失敗 ${failed} 件`);
+  return failed > 0 ? 1 : 0;
 }
