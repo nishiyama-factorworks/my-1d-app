@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { OutOfRangeNotice } from "./out-of-range-notice";
 
@@ -33,4 +33,30 @@ describe("OutOfRangeNotice: 範囲外ページの案内", () => {
 
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
+
+  it.each([
+    {
+      label: "先頭ページへ",
+      target: { kind: "first" } as const,
+      linkName: "先頭のページへ",
+    },
+    {
+      label: "最終ページへ",
+      target: { kind: "last", page: 2 } as const,
+      linkName: "最終ページ（2ページ目）へ",
+    },
+  ])(
+    'AC-26d: $label の案内文とリンクは role="status" の要素の中にある',
+    ({ target, linkName }) => {
+      render(<OutOfRangeNotice q="react" target={target} />);
+
+      const status = screen.getByRole("status");
+      expect(
+        within(status).getByText("指定されたページは存在しません"),
+      ).toBeInTheDocument();
+      expect(
+        within(status).getByRole("link", { name: linkName }),
+      ).toBeInTheDocument();
+    },
+  );
 });

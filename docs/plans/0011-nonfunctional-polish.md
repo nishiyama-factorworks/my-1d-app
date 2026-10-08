@@ -206,7 +206,8 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `app/page.tsx`、`app/page.test.tsx`、`app/repos/[owner]/[repo]/page.tsx`、`page.test.tsx`（4 ファイル）
   - 完了条件: 既存テストは期待値を変えずに通る。`pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: 0件・範囲外の案内の `role="status"` と、0件の案内の折り返し**
+- [x] **T5: 0件・範囲外の案内の `role="status"` と、0件の案内の折り返し**
+  - 進捗: RED（11 件中 4 件失敗。`role="status"` が無い、`break-all` が無い）→ GREEN（verify --quick PASS、734 件）。変異確認: 0件・範囲外の `role` を `alert` にする／外す、`break-all` を 2 行目に付け替える、の 5 つすべてで検出。既存の `app/page.test.tsx` の `status` 関連テストは期待値を変えずに通る（0件・範囲外の画面で `queryByRole("status")` を検証する既存テストは無い）。
   - 対応 AC: AC-26d（0件・範囲外、部品単位）、AC-27（自動検査）
   - 先に書くテスト:
     - `features/search/components/empty-results.test.tsx`
