@@ -153,7 +153,9 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `lib/github/http.ts`、`http.test.ts`、`client.test.ts`、`docs/adr/0005-github-fetch-revalidate.md`（4 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`（`RequestInit` の `next` は Next.js の型で拡張されている）・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: キャッシュが動的ルートで効くことの実機確認と ADR への記録**
+- [x] **T2: キャッシュが動的ルートで効くことの実機確認と ADR への記録**
+  - 結果（2026-10-08）: **効いた**。`GITHUB_TOKEN= NEXT_PRIVATE_DEBUG_CACHE=1 next start`（`pnpm build` 済み、`/` と `/repos/[owner]/[repo]` は動的 `ƒ`）で、検索・詳細とも同じ URL を 3 回取得し、キャッシュのログが「ミス → 保存 → ヒット → ヒット」。コア API の残り回数は 52 → 51。詳細は ADR 0005 の「実機確認」。実装の方針変更は不要（T1 のまま）。
+  - 手順の変更: 検索の残り回数（`resources.search.remaining`）が動かず判定に使えなかったため、キャッシュのデバッグログ（`NEXT_PRIVATE_DEBUG_CACHE=1`。キーはハッシュ）を主な根拠にした。未確認: 認証あり、再検証時間を過ぎた後、先読み。
   - 対応 AC: AC-29c（「動的ルートで効くか」の確認結果を ADR に記録。仕様 8節）
   - 先に書くテスト: なし（実機確認）
   - 手順（Q2。`GITHUB_TOKEN` の値を表示しない・`.env*` を読まない。ポートは 3111 の例）:
