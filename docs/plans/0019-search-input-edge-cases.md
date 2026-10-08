@@ -1,6 +1,6 @@
 # 0019: 検索パス・キーワード正規化の入力の取りこぼしへの対応 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #21
 - 対応する仕様: docs/specs/0019-search-input-edge-cases.md（あわせて docs/specs/0004-search-utils.md の AC-25m）
@@ -70,7 +70,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
     6. `trim()` を外して元の入力をそのまま返す → AC-25a と AC-3 の `" foo\u200B "` が失敗する（AC-5 の既存テストが効いていることの確認）。
   - 完了条件: 追加したテストと既存テストがすべて通り、既存テストの期待値の変更が 0 件（`git diff` で `query.test.ts` の既存行に変更が無いこと、`search-form.test.tsx`・`page.test.tsx`・`back-path.test.ts` が無変更で通ることを確認）。`pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。ソース・テストにゼロ幅文字の直書きが無いこと（`query.ts`・`query.test.ts` を `[\u200B\u200C\u200D\u2060]` で Grep して 0 件）を確認する。
 
-- [ ] **T2: 全体の検証とレビュー**
+- [x] **T2: 全体の検証とレビュー**
   - 対応 AC: なし（AC-1〜AC-5 の総合確認）
   - 先に書くテスト: なし
   - 実装対象: 本計画の進捗メモのみ
@@ -140,3 +140,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: 人間が計画を承認（Q1〜Q6 すべて推奨どおり）。Status: in-progress。T1 から着手。
 
 - 2026-10-09: T1 完了。RED: 9 件失敗（AC-1 の 4 件、AC-2 の 4 件、AC-4 の 1 件。いずれも `expected '<ゼロ幅文字>' to be null` の期待値の不一致）、AC-3 の 3 件と既存テストは緑（45 件中 36 件成功）。GREEN: `normalizeKeyword` が「4 文字を除く → trim → 空なら null、そうでなければ元の入力を trim して返す」。`verify.sh --quick` PASS。変異 8 件（trim だけに戻す、文字クラスから U+200B・U+200C・U+200D・U+2060 を 1 つずつ外す 4 件、除いた値を返す、再 trim なし、trim せず元の入力を返す）をすべて検出し、`query.ts` を復元。変異 5（範囲を広げても落ちない）は計画どおり検出対象外で、範囲はコードレビューで確認する。`query.test.ts` は既存行の変更 0 件（43 行の追加のみ）。ソース・テストの生のゼロ幅文字は 0 件（node で全文を走査。Grep ツールはパターンを正しく扱えず誤ヒットするため根拠にしない）。
+
+- 2026-10-09: T2 完了。`bash scripts/verify.sh`（full）: typecheck / lint / test / build すべて PASS。`reviewer`: Approve（Critical なし）。Major（仕様 0011 の 9 節の未決事項が未チェック）は Q5 のとおり解決済みにして 0011 の変更履歴に追記。Minor（0019 の 9 節の仮の書き方、0004 AC-25m の Then の曖昧さ）と Nit（`g` 付き正規表現が replace 専用であることのコメント）を反映。Minor のうち「範囲外の U+200E だけなら null にならない」という負のテストは、仕様の AC に無い入力のため追加せず、人間の判断に回す。`security-reviewer` は Q4 のとおり省略。Status: done。

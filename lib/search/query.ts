@@ -34,6 +34,7 @@ export function parseSearchParams(params: SearchParamsInput): SearchQuery {
 }
 
 // trim() が除かないゼロ幅文字（U+200B・U+200C・U+200D・U+2060）。見た目が空の入力を空と判定するためだけに使う。
+// `g` 付きのため replace 専用（test() に流用すると lastIndex が残る）。
 const ZERO_WIDTH_CHARS = /[\u200B-\u200D\u2060]/g;
 
 export function normalizeKeyword(input: string): string | null {
