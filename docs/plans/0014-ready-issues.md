@@ -1,6 +1,6 @@
 # 0014: 依存が完了した Issue を Project の Ready に更新する仕組み 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                     <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #25
 - 対応する仕様: docs/specs/0014-ready-issues.md
@@ -352,7 +352,11 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
     - （4 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T10: 最終確認とレビュー**
+- [x] **T10: 最終確認とレビュー**
+  - 結果（2026-10-08）: `bash scripts/verify.sh`（full）は typecheck・lint・test・build すべて PASS。実機（読み取りだけ）の `node scripts/ready-issues.mjs` は #8 が候補、#9〜#13 が待ちで妥当。`--project` と `--apply` は `project` スコープが無いため未実行（未検証）。
+  - レビュー: reviewer は Major 1 件（Q6 の件数超過の警告が未実装）、security-reviewer は Critical/High なし・Medium 2 件（hook が `2>&1` や `--ap''ply` で `--apply` を見逃す）。いずれもテストを先に追加して RED を確認してから直した（hook は 33 件、全体 209 件が PASS）。
+  - 追加で直した Minor/Low: 範囲の記号の揺れ（`～`・`~`・前後の空白）で依存が落ちる問題、`extractSpecNumber` を計画の正規表現に揃える、表示前に書式制御文字（U+202E など）も除去（提案 P2 を採用）。
+  - 直していないもの（PR で報告）: field-list の失敗を一律「見つかりませんでした」と表示する文言、権限不足のあとも残りの更新を試す挙動、`IssueSummary` などの型定義の重複、`scripts/ready-issues*.mjs` を guard-files の保護対象に入れること、`--url` の形の検証。いずれも安全側に倒れており、仕様の AC には影響しない。
   - 対応 AC: なし（検証）
   - 確認:
     - `bash scripts/verify.sh`（full）を実行し、PASS/FAIL を事実のまま進捗メモに記録する。

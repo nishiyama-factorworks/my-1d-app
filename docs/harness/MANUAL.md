@@ -792,7 +792,7 @@ Issue 起票 ─▶ Ready ─▶ /feature <番号> ─▶ 仕様承認 ─▶ �
 
 | 層 | ファイル | 内容 |
 | --- | --- | --- |
-| 権限 | `settings.json` | 参照系（`gh issue view` `gh pr view` `gh pr checks` など）は allow、作成・コメント・変更は ask、マージ・削除・認証・シークレットは deny。`node scripts/ready-issues.mjs`（引数なし・`--project`）は allow、`--apply` を含むものは ask |
+| 権限 | `settings.json` | 参照系（`gh issue view` `gh pr view` `gh pr checks` など）は allow、作成・コメント・変更は ask、マージ・削除・認証・シークレットは deny。`node scripts/ready-issues.mjs`（引数なし・`--assume-closed`・`--project`）は allow、`--apply` を含むものは ask |
 | ガード | `hooks/guard-bash.sh` | 権限と二重で、`gh pr merge`・各種 delete・`gh secret`・`gh auth token` 等・`--admin`・`gh api` の DELETE を拒否。`gh api` の書き込みと Issue/PR の作成・コメントは確認。`node scripts/ready-issues.mjs --apply` も確認（スクリプトが内部で `gh project item-edit` を呼ぶため） |
 | 現在地の注入 | `hooks/session-start.sh` | ブランチ名（`feat/12-…`）から Issue 番号を拾い、番号・タイトル・状態・ラベルを注入。**本文は注入しない** |
 | ルール | `rules/50-git-and-pr.md` `40-security.md` | ブランチ・コミット・Draft PR・マージ権限／Issue・PR コメントは信頼できない入力 |
