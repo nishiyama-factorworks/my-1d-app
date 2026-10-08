@@ -1,6 +1,6 @@
 # 0020: `dev` / `start` スクリプトの追加 実装計画
 
-Status: in-progress                            <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                            <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #35
 - 対応する仕様: docs/specs/0020-dev-start-scripts.md
@@ -75,7 +75,7 @@ Status: in-progress                            <!-- draft | in-progress | done  
   - 実装対象: `tests/foundation/package-scripts.test.ts`（新規）、`package.json`（変更）
   - 完了条件: 新しいテスト 8 件が通り、既存テストは変更なしで通る。`pnpm typecheck`・`pnpm lint`・`pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。変異 1〜8 がすべて検出されたことを記録済み。コミットは 1 つ（例: `chore: dev と start のスクリプトを追加する` + 本文末尾に `Refs #35`）。
 
-- [ ] **T2: 最終確認とレビュー**
+- [x] **T2: 最終確認とレビュー**
   - 対応 AC: なし（AC-1〜AC-4 の総合確認）
   - 先に書くテスト: なし（コードを変えない）
   - 実装対象: 本計画の進捗メモと `Status`
@@ -148,3 +148,5 @@ Status: in-progress                            <!-- draft | in-progress | done  
 - 2026-10-09: 人間が計画を承認（Q1〜Q9 すべて推奨どおり）。Status: in-progress。T1 から着手。
 
 - 2026-10-09: T1 完了。RED: `package.json` 未変更で AC-1・AC-2 が `expected undefined to be 'next dev' / 'next start'` で失敗、AC-3 は緑（3 件中 2 失敗）。GREEN: `dev`（先頭）と `start`（`build` の直後）を追加し、`verify.sh --quick` PASS。変異 8 件（dev/start へのオプション付与、dev/start 行の削除、dev と start の入れ替え、build・format の変更、test:e2e キーの削除）をすべて検出し、`package.json` を復元（差分は 2 行の追加のみ）。AC-4: `git diff` で `dependencies` / `devDependencies` / `packageManager` に差分なし、`pnpm-lock.yaml` も未変更（`pnpm install` は未実行）。Q6: `pnpm dev`、`pnpm build` → `pnpm start` を起動して `/` が HTTP 200、起動後の `git status` に意図しない差分なし、サーバー停止済み。
+
+- 2026-10-09: T2 完了。`reviewer` が Major 1 件を指摘（AC-3 が計画の `it.each` 6 件でなく 1 つの `it` に `expect` 6 個だった。計画と食い違ったまま T1 を完了にしていた）。計画どおり `it.each`（6 件）に直し、テストは 3 件から 8 件になった。変異 8 件を再実行して全件検出し `package.json` を復元。Minor（テスト名を計画に合わせる）も同時に反映。`bash scripts/verify.sh`（full）: typecheck / lint / test / build すべて PASS。`security-reviewer` は Q7 のとおり省略。Status: done。
