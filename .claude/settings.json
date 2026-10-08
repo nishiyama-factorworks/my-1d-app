@@ -44,6 +44,7 @@
       "Bash(gh project list *)",
       "Bash(gh project view *)",
       "Bash(gh project item-list *)",
+      "Bash(node scripts/ready-issues.mjs *)",
       "Bash(ls *)",
       "Bash(mkdir *)",
       "Bash(grep *)",
@@ -76,6 +77,7 @@
       "Bash(gh project item-add *)",
       "Bash(gh project item-create *)",
       "Bash(gh project item-edit *)",
+      "Bash(node scripts/ready-issues.mjs *--apply*)",
       "Bash(gh workflow run *)",
       "Bash(gh repo create *)"
     ],

@@ -93,4 +93,18 @@ if [ -n "${PKG_MANAGER:-}" ]; then
   done
 fi
 
+# --- 6. リポジトリのスクリプトによる GitHub への書き込み ------------------------
+# 末尾に置く理由: pretool_ask はその場で終了するため、途中に置くと上の拒否の規則（4, 5）より
+# 先に「確認」で抜けてしまう（例: node scripts/ready-issues.mjs --apply; cat .env）。
+# scripts/ready-issues.mjs は内部で gh project item-edit を呼ぶため、3 の確認が効かない。
+# 行継続（\ と改行）で --apply が次の行に来ても検出できるよう、改行を空白に置き換えてから照合する。
+# 引用符の中も照合する（node "scripts/ready-issues.mjs" "--apply" を逃さないため）。
+# コミットメッセージに書いただけでも確認になるが、安全側の誤検知として受け入れる。
+# さらに、2>&1 や &> のリダイレクト（& が区間の区切りと誤認される）と、引用符・バックスラッシュ
+# （--ap''ply のようにシェルが元に戻して node に渡す書き方）を取り除いてから照合する。
+flat="$(printf '%s' "$cmd" | tr '\r\n' '  ' | sed -E "s/[0-9]*>&[0-9-]+//g; s/&>>?//g; s/[\"'\\\\]//g")"
+if printf '%s' "$flat" | grep -Eiq -- 'ready-issues\.mjs[^;&|]*--apply'; then
+  pretool_ask '[harness] Project の Status を更新する操作（ready-issues.mjs --apply）です。表示された候補と更新予定を確認してください。'
+fi
+
 exit 0
