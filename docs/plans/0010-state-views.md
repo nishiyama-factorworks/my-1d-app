@@ -153,7 +153,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `features/state-views/components/api-error-view.tsx`、`retry-button.tsx`、`api-error-view.test.tsx`（3 ファイル）
   - 完了条件: `pnpm test`・`pnpm lint`・`pnpm typecheck` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: トップの取得を `<Suspense>` に移し、読み込み中を出す**
+- [x] **T4: トップの取得を `<Suspense>` に移し、読み込み中を出す**
   - 対応 AC: AC-16a（トップ、ページ単位）。既存の AC-4a・4b・8a・8d・9a〜9d・22c・1・21b は振る舞いを変えない
   - 先に書くテスト:
     - `app/page.test.tsx`（1.2 (g) の `renderPage` の変更。`useRouter` のモックに `refresh` を足す）
@@ -328,4 +328,5 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - 2026-10-08: T1 完了。RED は仮実装（`""`）で 8/8 件が期待値の不一致（`expected '' to be …`）で失敗、GREEN は `Intl.DateTimeFormat`（`timeZone: "Asia/Tokyo"`, `hourCycle: "h23"`）で 8/8 通過、`verify.sh --quick` PASS。検出力の変異確認 (1)〜(3) は未実施。
 - 2026-10-08: T2 完了。RED は仮実装（`<div />`）で 4 件中 3 件が失敗（`role="status"` が見つからない／文言の要素が見つからない）、残り 1 件（AC-17「含まない」）は計画どおり仮実装でも通過。GREEN は 4/4 通過、`verify.sh --quick` PASS。T2 に変異確認の指定は無いため未実施。
 - 2026-10-08: T3 完了。RED は仮実装（`ApiErrorView` = `<div />`）で 11 件中 7 件が失敗（`role="alert"` が見つからない 5 件、`再試行` ボタンが見つからない 2 件）、AC-19c の 4 件は計画どおり仮実装でも通過。GREEN は 11/11 通過、`verify.sh --quick` PASS。変異確認: (1) `resetAt` を無視 → AC-18a が失敗、(2) `refresh` を `push(location.href)` に → AC-19d が失敗、(3) UPSTREAM と NETWORK の文言取り違え → AC-19a×2・19b が失敗。いずれも元に戻し済み。
+- 2026-10-08: T4 完了。RED は search-content が仮実装（null）で 2/2 件失敗（reject されない／案内なし）、page は取得を待ち続けて AC-16a の「取得中」2 件がタイムアウト（残り 3 件は連鎖失敗）。GREEN 直後、遷移テスト 2 件が同期 `act` ではフォールバックを観測できず失敗したため（`key` ありでも再現。`await act(async …)` なら出る）、`app/page.test.tsx` の該当 `act` を async に変更（期待値は不変）。GREEN は 27/27 通過、`verify.sh --quick` PASS。変異確認: (1) `key` を外す → 遷移 2 件が失敗、(2) `key` を `q` のみ → `page` の 1 件だけ失敗、(3) ページで `await renderSearchContent` に戻す → 取得中系と遷移を含む 13 件が失敗。いずれも元に戻し済み。
 - 前提として読んだ申し送り: 0006 計画（0件・読み込み中・`<Suspense>` への移行）、0007 計画（範囲外の 2 段の判定を一緒に移す、0件は AC-9d の分岐の中、257 文字の `q` の 500、先読みの再確認）、0008 計画（`loading.tsx` と先読み、ストリーミング時の 404 が 200 になる点）。いずれも本計画の 1 節・T4〜T7・T9 に反映した。

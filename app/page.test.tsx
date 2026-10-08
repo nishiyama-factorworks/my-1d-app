@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import { startTransition } from "react";
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { GitHubApiError } from "@/lib/github/errors";
 import type {
   SearchRepositoriesParams,
   SearchRepositoriesResult,
@@ -9,10 +9,13 @@ import Page from "./page";
 
 // SearchForm が useRouter を呼ぶ。App Router のコンテキストが無いと例外になるため、
 // プロセス境界の外（履歴更新・RSC 取得）にあたる useRouter だけを差し替える。
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const { push, refresh } = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, refresh }),
 }));
 
 // 検索 API（ネットワーク境界）だけを差し替える。ファクトリで丸ごと置き換えるので
@@ -28,21 +31,29 @@ vi.mock("@/lib/github", () => ({ searchRepositories }));
 
 beforeEach(() => {
   push.mockReset();
+  refresh.mockReset();
   searchRepositories.mockReset();
   searchRepositories.mockResolvedValue({ totalCount: 0, items: [] });
 });
 
 // async な Server Component は JSX としては描画できないため、
 // ページ関数を直接呼んで await し、返った要素を描画する。
-async function renderPage(
-  searchParams: Record<string, string | string[] | undefined>,
-) {
-  render(
-    await Page({
-      params: Promise.resolve({}),
-      searchParams: Promise.resolve(searchParams),
-    }),
-  );
+// 取得は <Suspense> の中で行われるので、act の中で描画して解決を待つ。
+type TestSearchParams = Record<string, string | string[] | undefined>;
+
+function callPage(searchParams: TestSearchParams) {
+  return Page({
+    params: Promise.resolve({}),
+    searchParams: Promise.resolve(searchParams),
+  });
+}
+
+async function renderPage(searchParams: TestSearchParams) {
+  let result!: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(await callPage(searchParams));
+  });
+  return result;
 }
 
 describe("トップページ", () => {
@@ -148,16 +159,93 @@ describe("トップページ", () => {
     },
   );
 
-  it("AC-4a（仕様6.1）: 検索 API が GitHubApiError で失敗したとき、握りつぶさずにそのまま投げる", async () => {
-    const error = new GitHubApiError("RATE_LIMIT");
-    searchRepositories.mockRejectedValue(error);
+  it('AC-16a: /?q=react で取得中のとき、検索フォームは表示されたまま、role="status" の「読み込み中…」が表示される', async () => {
+    searchRepositories.mockReturnValue(new Promise(() => {}));
 
-    await expect(
-      Page({
-        params: Promise.resolve({}),
-        searchParams: Promise.resolve({ q: "react" }),
-      }),
-    ).rejects.toBe(error);
+    await renderPage({ q: "react" });
+
+    expect(
+      screen.getByRole("searchbox", { name: "キーワード" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("読み込み中…");
+    expect(screen.queryByText(/総ヒット件数/)).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("AC-16a: 読み込み中の表示は検索フォームより後ろ（一覧の位置）にある", async () => {
+    searchRepositories.mockReturnValue(new Promise(() => {}));
+
+    await renderPage({ q: "react" });
+
+    const form = screen.getByRole("searchbox", { name: "キーワード" });
+    expect(
+      form.compareDocumentPosition(screen.getByRole("status")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("AC-16a: 取得が終わると読み込み中の表示が消え、結果に置き換わる", async () => {
+    searchRepositories.mockResolvedValue({
+      totalCount: 12345,
+      items: [
+        {
+          fullName: "vercel/next.js",
+          ownerLogin: "vercel",
+          ownerAvatarUrl:
+            "https://avatars.githubusercontent.com/u/14985020?v=4",
+        },
+      ],
+    });
+
+    await renderPage({ q: "react" });
+
+    expect(
+      await screen.findByText("総ヒット件数: 12,345 件"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it.each([
+    {
+      label: "q（react → vue）",
+      first: { q: "react" },
+      second: { q: "vue" },
+    },
+    {
+      label: "page（1 → 2）",
+      first: { q: "react", page: "1" },
+      second: { q: "react", page: "2" },
+    },
+  ])(
+    "AC-16a: 表示済みの状態から $label が変わる遷移（トランジション）でも読み込み中が表示される",
+    async ({ first, second }) => {
+      searchRepositories.mockResolvedValueOnce({
+        totalCount: 12345,
+        items: [],
+      });
+      const { rerender } = await renderPage(first);
+      expect(
+        await screen.findByText("総ヒット件数: 12,345 件"),
+      ).toBeInTheDocument();
+
+      searchRepositories.mockReturnValue(new Promise(() => {}));
+      const next = await callPage(second);
+      // 同期の act では、未解決の Promise を use で読んだときの中断がフラッシュされず、
+      // fallback を観測できないため、async の act で待つ
+      await act(async () => {
+        startTransition(() => {
+          rerender(next);
+        });
+      });
+
+      expect(screen.getByRole("status")).toHaveTextContent("読み込み中…");
+    },
+  );
+
+  it("AC-16a（補強）: q が無いときは読み込み中を表示しない", async () => {
+    await renderPage({});
+
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 
