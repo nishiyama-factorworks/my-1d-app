@@ -111,10 +111,10 @@
 
 - 出力: 「Ready にできる Issue」（`#8 0008 詳細ページ（依存: 0003 ✓, 0004 ✓）`）、「待ち」（`#9 0009 …（待ち: 0008）`）、警告。
 - 終了コード: 0（正常。候補が0件でも0）、1（使い方の誤り、権限不足、Project の不整合、更新の失敗）。
-- 外部コマンドは `gh` だけ。引数は配列で渡す（シェルを経由しない）。使うのは `gh repo view --json nameWithOwner`（読み取り。Project の所有者の既定値と、項目の照合に使うリポジトリ名を得る）、`gh issue list`（読み取り）、`gh project view / field-list / item-list`（読み取り）、`gh project item-edit`（書き込み。`--apply` のときだけ）。
+- 外部コマンドは `gh` だけ。引数は配列で渡す（シェルを経由しない）。使うのは `gh repo view --json nameWithOwner`（読み取り。Project の所有者の既定値と、項目の照合に使うリポジトリ名を得る）、`gh issue list`（読み取り）、`gh project field-list / item-list`（読み取り）、`gh project item-edit`（書き込み。`--apply` のときだけ。Project の番号と所有者、Issue の URL、フィールド名 `Status`、値 `Ready` を名前で指定する）。
 
 ## 7. データ
-保存しない。入力は `docs/specs/*.md` の関連行と、`gh issue list --state all` の結果（番号・タイトル・状態）。上限は1,000件（超えたら警告を表示する）。
+保存しない。入力は `docs/specs/*.md` の関連行と、`gh issue list --state all` の結果（番号・タイトル・状態・URL）。上限は1,000件（超えたら警告を表示する）。
 
 ## 8. 非機能要件
 - セキュリティ:
@@ -134,3 +134,4 @@
 | --- | --- | --- |
 | 2026-10-08 | 初版 | Issue #25。依存が完了したタスクを Ready にする作業の機械化 |
 | 2026-10-08 | 6.2 に `gh repo view --json nameWithOwner` の使用、`--assume-closed` の書き方と `--apply` との併用不可を追記 | 計画の要確認事項 Q1・Q2・Q3 を人間が推奨どおりに決定 |
+| 2026-10-08 | 6.2 の使用コマンドを、Project の更新を名前で指定する形（`gh project item-edit <番号> --owner <所有者> --url <Issue の URL> --field Status --value Ready`）に変更。`gh project view` を使わない。7 節の入力に Issue の URL を追加 | 実装中に `gh` 2.102.0 の `item-edit --help` を確認し、名前で指定する形が「通常の方法」だと分かったため。人間が採用 |

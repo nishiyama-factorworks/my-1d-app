@@ -71,7 +71,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 **(c) 対応づけと判定（AC-7〜12）**
 
-- 型: `IssueSummary = { number: number; title: string; state: "OPEN" | "CLOSED" }`。
+- 型: `IssueSummary = { number: number; title: string; state: "OPEN" | "CLOSED"; url?: string }`（`url` は Project の更新で使う。判定には使わない。2026-10-08 に追加）。
 - `indexIssuesBySpec`: 仕様番号が `null` の Issue は除く（AC-6）。同じ番号の Issue が 2 件以上なら `bySpec` に入れず `duplicates: { specNumber: string; issueNumbers: number[] }[]` に入れる（AC-7）。
 - `classifyIssues` の規則（上から順に適用）:
   1. `assumeClosed` に含まれる番号の Issue は `CLOSED` とみなす（AC-12）。
@@ -104,12 +104,12 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 **(e) Project の更新計画（AC-14〜16・19）**
 
 - 型: `ProjectField = { id: string; name: string; options?: { id: string; name: string }[] }`、`ProjectItem = { id: string; status: string | null; content: { type: string; number: number | null; repository: string | null } }`。
-- `findStatusField`: 名前が `Status` のフィールドが無い → `{ ok: false, message: "Status フィールドが見つかりません（存在したフィールド: Title, Assignees, …）" }`。選択肢に `Ready` が無い → `{ ok: false, message: "Status の選択肢に Ready がありません（存在した選択肢: Todo, In Progress, Done）" }`。あれば `{ ok: true, fieldId, readyOptionId }`。名前は完全一致（大文字小文字を区別）。
+- `findStatusField`: 名前が `Status` のフィールドが無い → `{ ok: false, message: "Status フィールドが見つかりません（存在したフィールド: Title, Assignees, …）" }`。選択肢に `Ready` が無い → `{ ok: false, message: "Status の選択肢に Ready がありません（存在した選択肢: Todo, In Progress, Done）" }`。あれば `{ ok: true }`（更新は名前で指定するため ID は使わない。2026-10-08 変更）。名前は完全一致（大文字小文字を区別）。
 - `planProjectUpdates`: 候補ごとに、`content.type === "Issue"`・`content.number === Issue 番号`・`content.repository === repository` の項目を探す。
   - 無い → `{ action: "absent" }` → `ボードに無い`（AC-14・15）。
-  - Status が `Backlog` → `{ action: "update", itemId }` → `Backlog → Ready（更新予定）`（AC-14・15）。
+  - Status が `Backlog` → `{ action: "update" }` → `Backlog → Ready（更新予定）`（AC-14・15）。
   - それ以外（`Ready` を含む。値が無い場合は `なし`）→ `{ action: "keep", currentStatus }` → `変更しない（現在: In progress）`（AC-14・15・16）。
-- `PlanEntry = { issueNumber: number; specNumber: string; title: string; action: "update" | "keep" | "absent"; itemId: string | null; currentStatus: string | null }`。表示行は `#8 0008 詳細ページ: Backlog → Ready（更新予定）`。
+- `PlanEntry = { issueNumber: number; specNumber: string; title: string; action: "update" | "keep" | "absent"; issueUrl: string; currentStatus: string | null }`。表示行は `#8 0008 詳細ページ: Backlog → Ready（更新予定）`。
 
 **(f) `gh` の呼び出しの契約**
 
@@ -118,17 +118,16 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 | 目的 | 引数の配列 | 使う出力 |
 | --- | --- | --- |
-| Issue の一覧 | `["issue", "list", "--state", "all", "--json", "number,title,state", "--limit", "1000"]` | `[{ number, title, state: "OPEN" \| "CLOSED" }]` |
+| Issue の一覧 | `["issue", "list", "--state", "all", "--json", "number,title,state,url", "--limit", "1000"]` | `[{ number, title, state: "OPEN" \| "CLOSED", url }]` |
 | リポジトリ（`--project` のときだけ） | `["repo", "view", "--json", "nameWithOwner"]` | `{ nameWithOwner: "owner/repo" }`（Q1） |
-| Project | `["project", "view", "3", "--owner", "<owner>", "--format", "json"]` | `{ id: "PVT_…" }` |
 | フィールド | `["project", "field-list", "3", "--owner", "<owner>", "--format", "json"]` | `{ fields: [{ id, name, type, options?: [{ id, name }] }] }` |
 | 項目 | `["project", "item-list", "3", "--owner", "<owner>", "--format", "json", "--limit", "1000"]` | `{ items: [{ id, status?, content: { type, number, repository } }], totalCount }`。Status の値はフィールド名を小文字にしたキー（`status`）に入る想定（Q6） |
-| 更新（`--apply` のときだけ） | `["project", "item-edit", "--id", "<PVTI_…>", "--project-id", "<PVT_…>", "--field-id", "<PVTSSF_…>", "--single-select-option-id", "<option id>"]` | なし（終了コードだけ） |
+| 更新（`--apply` のときだけ） | `["project", "item-edit", "3", "--owner", "<owner>", "--url", "<Issue の URL>", "--field", "Status", "--value", "Ready"]`（名前で指定する形。`gh project item-edit --help` で「通常の方法」とされている。2026-10-08 に人間が採用） | なし（終了コードだけ） |
 
-- 確認の方法: `gh issue list --help`・`gh repo view --help`・`gh project view --help`・`gh project field-list --help`・`gh project item-list --help`・`gh project item-edit --help` を実行する。**読み取りの実行（`--help` 以外）はしない**（Project の権限が無い）。`gh project item-edit --help` は `guard-bash.sh` の 3b の `ask_if` と `settings.json` の ask に合うため確認が出る。`gh project field-list` は allow に無いため確認が出る。いずれも人間に承認してもらう（内容は表示だけで変更しない）。
-- 出力の検証: `parseIssueList` `parseRepoView` `parseProjectView` `parseFieldList` `parseItemList`（いずれも `stdout: string` を受け、`JSON.parse` の結果を `unknown` として形を確かめ、型付きの値を返す。形が違えば例外を投げ、CLI が「`gh` の出力を解釈できませんでした」と表示して終了コード 1）。zod は依存に無いため手書きの検証にする（依存を追加しない。仕様 4.1）。
+- 確認の方法: `gh issue list --help`・`gh repo view --help`・`gh project field-list --help`・`gh project item-list --help`・`gh project item-edit --help` を実行する。**読み取りの実行（`--help` 以外）はしない**（Project の権限が無い）。`gh project item-edit --help` は `guard-bash.sh` の 3b の `ask_if` と `settings.json` の ask に合うため確認が出る。`gh project field-list` は allow に無いため確認が出る。いずれも人間に承認してもらう（内容は表示だけで変更しない）。
+- 出力の検証: `parseIssueList` `parseRepoView` `parseFieldList` `parseItemList`（いずれも `stdout: string` を受け、`JSON.parse` の結果を `unknown` として形を確かめ、型付きの値を返す。形が違えば例外を投げ、CLI が「`gh` の出力を解釈できませんでした」と表示して終了コード 1）。zod は依存に無いため手書きの検証にする（依存を追加しない。仕様 4.1）。
 - 権限不足の検知: `isMissingScopes(stderr: string): boolean` = `/missing required scopes/i.test(stderr)`。どの `gh` の呼び出しでも、失敗の標準エラー出力に含まれれば AC-18 の表示（`gh auth refresh -s project` をご自身のターミナルで実行してください）にして終了コード 1。
-- Project が見つからない（AC-19）: `gh project view` が失敗し、権限不足でないとき → `Project #3（所有者: owner）が見つかりませんでした` と、`gh` の標準エラー出力（制御文字を除去）を表示して終了コード 1。
+- Project が見つからない（AC-19）: `gh project field-list` が失敗し、権限不足でないとき → `Project #3（所有者: owner）が見つかりませんでした` と、`gh` の標準エラー出力（制御文字を除去）を表示して終了コード 1。
 
 **(g) 引数と流れ（`runReadyIssues`）**
 
@@ -136,7 +135,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 値の検証: Issue 番号は `#` を 1 つまで許して `/^[1-9]\d*$/`。`--project` は `/^[1-9]\d*$/`。`--owner` は `@me` か `/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/`（引数は配列で渡すので注入は起きないが、外部入力として検証する。`.claude/rules/40-security.md`）。
 - `--assume-closed 8 9`（仕様 6.2 の「番号は複数可」）: 位置引数は `--assume-closed` があるときだけ追加の番号として受け付け、それ以外の位置引数は使い方の誤りにする。`--assume-closed 8 --assume-closed 9` も可（Q3）。
 - 使い方の誤り（終了コード 1、`gh` を一度も呼ばない）: `--apply` だけで `--project` が無い（AC-17）、`--apply` と `--assume-closed` の併用（Q2。仮定で Ready に更新しないため）、上記の値の誤り。
-- 流れ: 引数 → `gh issue list` → 仕様ファイルの読み込み → `classifyIssues` → 表示 → `--project` が無ければ 0 → `gh repo view`（`--owner` が無いときの所有者と、項目の照合に使うリポジトリ名）→ `gh project view` → `gh project field-list` → `findStatusField` → `gh project item-list` → `planProjectUpdates` → 表示 → `--apply` が無ければ 0（AC-13・14）→ `update` の項目ごとに `gh project item-edit`。失敗しても続行し、最後に `更新: 成功 1 件 / 失敗 1 件` を表示（AC-20）。失敗が 1 件以上なら 1、それ以外は 0（AC-15・16。更新 0 件も `更新: 成功 0 件 / 失敗 0 件` で 0）。
+- 流れ: 引数 → `gh issue list` → 仕様ファイルの読み込み → `classifyIssues` → 表示 → `--project` が無ければ 0 → `gh repo view`（`--owner` が無いときの所有者と、項目の照合に使うリポジトリ名）→ `gh project field-list` → `findStatusField` → `gh project item-list` → `planProjectUpdates` → 表示 → `--apply` が無ければ 0（AC-13・14）→ `update` の項目ごとに `gh project item-edit`。失敗しても続行し、最後に `更新: 成功 1 件 / 失敗 1 件` を表示（AC-20）。失敗が 1 件以上なら 1、それ以外は 0（AC-15・16。更新 0 件も `更新: 成功 0 件 / 失敗 0 件` で 0）。
 - 仕様ファイルの読み込みは入口が `new URL("../docs/specs/", import.meta.url)` を基準に行う（実行時のカレントディレクトリに依存しない）。
 
 **(h) AC-22 の規則（`settings.json` と `guard-bash.sh`）**
@@ -286,11 +285,11 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 先に書くテスト: `scripts/lib/ready-issues-cli.test.ts`（偽の `runGh` は呼ばれた引数の配列を記録し、引数に応じて用意した `stdout` / 失敗を返す。`readSpecFiles` はリテラルの仕様を返す。`out` / `err` は配列に集める）
     - `AC-12: --assume-closed 8 と --assume-closed 8 9 と #8 を受け付け、不正な番号は使い方の誤りで終了コード 1`
     - `AC-13: --apply が無いとき（引数なし・--project 3）は item-edit を一度も呼ばない`（記録した引数に `item-edit` が無い）
-    - `AC-14: --project 3 では読み取り（issue list・repo view・project view・field-list・item-list）だけを行い、3 種の状態を表示して終了コード 0`
+    - `AC-14: --project 3 では読み取り（issue list・repo view・field-list・item-list）だけを行い、3 種の状態を表示して終了コード 0`
     - `AC-17: --apply だけのとき使い方を表示し、gh を一度も呼ばず終了コード 1`
     - `Q2: --apply と --assume-closed を併用すると使い方の誤りで、gh を呼ばず終了コード 1`
-    - `AC-18: project view が missing required scopes で失敗すると、「gh auth refresh -s project をご自身のターミナルで実行してください」を表示し、item-edit を呼ばず終了コード 1`
-    - `AC-19: project view が失敗すると Project の番号と所有者を表示して終了コード 1、Status / Ready が無いと選択肢の一覧を表示して終了コード 1`
+    - `AC-18: field-list が missing required scopes で失敗すると、「gh auth refresh -s project をご自身のターミナルで実行してください」を表示し、item-edit を呼ばず終了コード 1`
+    - `AC-19: field-list が失敗すると Project の番号と所有者を表示して終了コード 1、Status / Ready が無いと選択肢の一覧を表示して終了コード 1`
     - `issue list が 1,000 件のとき上限の警告を表示する`
     - `未知のオプション・--apply=true は使い方の誤りで終了コード 1`
   - RED: `runReadyIssues` を常に 0 を返す仮実装にして失敗を確認する。
@@ -452,3 +451,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-08: T1 完了。RED: 仮実装（`[]` / `null` / 空の Map）で 14 件中 8 件が失敗（AC-4・AC-6 の 6 件は期待値が仮実装と同じため通過=実装後の回帰テスト）。`.test.ts` から `.mjs` を import しても `typecheck` と `lint` が通ることを確認（計画 1.2 (a)）。実ファイルの仕様 14 件で解釈を確認: 0011 の範囲展開、0013 の補足つき、0014 が `[]`（自身の説明文の「依存: 0004, 0006」を拾わない）。変異での検出力確認（復元済み）: (1) 関連行に限定せず本文の「依存:」を拾う → AC-4 が失敗、(3) 「依存:」より前も見る → AC-1〜3 の 5 件が失敗、(2) 括弧内を取り除かない → 当初は **14 件すべて通過（テストの穴）**。AC-3 のテストが括弧内に番号を含まない例だけだったため。括弧内に番号を含む例（全角・半角）のテストを追加し、再実施で失敗を確認。
 - 2026-10-08: T2 完了。RED: 仮実装（空の結果）で 27 件中 9 件が失敗（警告の検証は、仕様 AC-7 の「警告を表示」を満たすよう RED に私が追加）。変異での検出力確認（復元済み、いずれも対応するテストが失敗）: 依存の1つでも完了なら ready／Issue なしの依存を完了扱い／state を見ない／仮定した Issue 自身を除外しない／依存が空でも対象にする。実装後に見つけた境界: すでに CLOSED の Issue を `--assume-closed` に指定すると「仮定」と表示してしまう → テストを先に足して RED を確認してから、CLOSED の依存は `assumed` に入れないよう修正（28 件 PASS）。判断（仕様に明記なし）: 自分の仕様番号が重複している OPEN の Issue は、ready にも waiting にも入れず、重複の警告だけを出す。
 - 2026-10-08: T3 完了。RED: 仮実装（入力をそのまま返す／空配列）で 7 件すべて失敗。変異での検出力確認（復元済み）: ESC を残す（`\p{Cc}` → `\p{Cf}`）→ AC-21 の 2 件が失敗、C1 制御文字を残す → AC-21 が失敗。**テストの穴を 2 件発見**: 警告のサニタイズを外しても、仕様番号・依存先番号のサニタイズを外しても、テストが通っていた（現状の判定ロジックでは警告・仕様番号は数字しか入らず到達しない多層防御）。制御文字を含む入力のテストを追加し、再実施で失敗を確認した。なお最初の変異の試行は、シェルの引用の扱いで置換が当たっておらず「全件通過」と出たため、スクリプトをファイルに書いてやり直した（当たっていない変異を検証とみなさない）。
+
+- 2026-10-08: 更新の方式を変更（人間が承認）。`gh` 2.102.0 の `gh project item-edit --help` で、名前で指定する形（`<番号> --owner <所有者> --url <Issue の URL> --field Status --value Ready`）が「通常の方法」、GraphQL の ID（`--id` `--project-id` `--field-id` `--single-select-option-id`）は「スクリプトや機械用」とされていることを確認したため。これにより `gh project view`（Project の ID の取得）と選択肢の ID の解決が不要になり、`PlanEntry` は `itemId` の代わりに `issueUrl` を持ち、`findStatusField` は ID を返さず、`gh issue list` の取得項目に `url` を足す。`gh project field-list` / `item-list` の出力 JSON の形は、`--help` に載っておらず、Project の権限が無いため**実機で未確認**（引き続き想定。権限付与後に確認する）。
