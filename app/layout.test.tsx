@@ -46,7 +46,7 @@ describe("ルートレイアウト: html 要素（0011）", () => {
       </RootLayout>,
     );
 
-    expect(html.startsWith('<html lang="ja"')).toBe(true);
+    expect(html).toMatch(/^<html[^>]*\slang="ja"[\s>]/);
     expect(html).toMatch(/<body[^>]*>.*<p>child<\/p>.*<\/body>/);
   });
 });

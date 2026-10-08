@@ -1,6 +1,6 @@
 # 0011: 非機能の仕上げ（アクセシビリティ・レスポンシブ・メタデータ・キャッシュ） 実装計画
 
-Status: in-progress                    <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                           <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #11
 - 対応する仕様: docs/specs/0011-nonfunctional-polish.md
@@ -270,7 +270,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `tests/a11y/focus-outline.test.ts`、`search-form.test.tsx`、`search-results.test.tsx`、`repo-detail-view.test.tsx`（4 ファイル。テストのみ）
   - 完了条件: `pnpm test`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T9: 文書の更新、最終確認、手動確認、レビュー**（進行中: 文書と curl での手動確認は完了。full verify・レビュー・ブラウザで人間に依頼する確認が残る）
+- [x] **T9: 文書の更新、最終確認、手動確認、レビュー**
   - 進捗（2026-10-08）: `docs/architecture.md` を更新（5 節にキャッシュとページタイトル、7 節にアクセシビリティ・レスポンシブ・性能）。
   - curl での手動確認（`pnpm build` → `GITHUB_TOKEN= next start -p 3111`、実 API）: ビルド出力で `/` と `/repos/[owner]/[repo]` は動的（`ƒ`）。`<html lang="ja">` はすべてのパス（`/`、`/?q=react`、`/repos/vercel/next.js`、存在しない詳細、`/no-such-path`）で確認（AC-26e）。`<title>`: `/` → `GitHub リポジトリ検索`、`/?q=react` と `/?q=%20react%20` → `react の検索結果 | GitHub リポジトリ検索`、`/repos/vercel/next.js` → `vercel/next.js | GitHub リポジトリ検索`、存在しない詳細 → `vercel/this-repo-does-not-exist-0011 | GitHub リポジトリ検索`、`/no-such-path`（HTTP 404）→ `GitHub リポジトリ検索`、`/?q=<b>x</b>` → `&lt;b&gt;x&lt;/b&gt; の検索結果 | …` とエスケープ（AC-28a〜28d）。0件（`/?q=zzzxqy0011qqq`）と範囲外（`/?q=react&page=35`）の HTML に `role="status"`、`h1` 1 つ・`main` 1 つ。詳細は `h1` 1・`main` 1。存在しない詳細は HTTP 200・`noindex`・本文は RSC ペイロード（0010 の決定どおり）で、`h1`「リポジトリが見つかりませんでした」を含む。
   - 対応 AC: AC-27（目視）、AC-26b2（フォーカスの見え方の目視）、AC-28a〜28d（実地）、AC-29c（ADR の確定）
@@ -295,7 +295,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - P1: 静的検査の禁止語に Tailwind v4 の `outline-hidden`（`outline: 2px solid transparent`）を加える。仕様 AC-26b2 の 4 つには無い（Q5）。
 - P2: 0件・範囲外・エラーを読み込み中から差し替えるとき、スクリーンリーダーが確実に読み上げるよう、ライブリージョンを先に置いておく（`role="status"` の空要素を常設して中身だけ差し替える）。仕様は `role` の有無だけを定めている（リスク表）。
 - P3: 詳細の `<title>` を API の `fullName`（正しい大文字・小文字）にする。追加の API 呼び出しは仕様 4.2 で行わない（同じ `fetch` はメモ化されるが、`signal` を渡しているのでメモ化されない）。
-- P4: 雛形の `description` の代わりに日本語の説明文を置く（Q10）。
+- P4: 雛形の `description` の代わりに日本語の説明文を置く（Q10）。**Q10 で採用し、仕様 AC-28d に反映して T3 で実装した。**
 
 ## 4. テスト方針
 
@@ -381,7 +381,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - [x] Q11: AC-28d の「子のページが `title` を持たない画面（404、エラー）」の解釈。詳細の 404 は仕様 6.1 のとおり `params` 由来のタイトル（ページの `generateMetadata` が動く）、トップ・詳細でページが例外を投げたときもページの `generateMetadata` のタイトルになる見込み。したがって「アプリ名がタイトルになる」のは、どのルートにも一致しない URL（`/no-such-path`、Next.js 標準の 404）が該当する、と解釈してよいか。推奨: その解釈で、単体テストは「`not-found.tsx`・`error.tsx` が `metadata` を持たない」の固定にとどめ、`/no-such-path` の `<title>` を T9 で確かめる。例外時のタイトルも T9 で観測できれば記録する。
 - [x] Q12: 既存テストの期待値の変更（1.2 (g)）でよいか。変更は詳細の `page.test.tsx` 183行の 1 か所（`h1` が無い → `vercel/next.js` の見出しが無く「リポジトリを表示できませんでした」の `h1` がある）だけで、他は追加のみ。
 - [x] Q13: タスクの順序と分け方。推奨: キャッシュを先に（T1・T2。未確認の前提を早く確かめ、効かなければ止める）、次にメタデータ（T3・T4）、アクセシビリティ（T5〜T8）、最後に文書と確認（T9）。詳細の `page.tsx`/`page.test.tsx` は T4 と T6 で触るので、この順で直列に進める。`/issue split` はせず 1 PR（9 タスク）で進める。
-- [x] Q14: 提案 P1〜P4 は本計画では採らない、でよいか。
+- [x] Q14: 提案 P1〜P3 は本計画では採らない（P4 は Q10 で採用）。
 
 ## 8. 進捗メモ
 
@@ -400,3 +400,4 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - 前提として読んだ申し送り: 0006 進捗メモ（レート制限の実測、0011 でのキャッシュの検討、`break-all` の 320px 目視が未実施）、0007 計画（先読みの確認）、0008 計画（コア API の 1 時間 60 回、先読み）、0010 計画（再試行による消費は 0011 のキャッシュで扱う、先読みの再確認）、仕様 0017（`metadata` と `lang` を 0011 へ移した、Issue #17 の文面が未更新）。
 
 - 2026-10-08: 人間が計画を承認（Status: in-progress）。Q1 は検索 300 秒・詳細 600 秒、Q10 は `description` を説明文に直す（仕様 AC-28d に反映）、Q8 は Issue #17 のタイトルを `gh issue edit` で直す、それ以外は推奨どおり。T1 から着手。
+- 2026-10-08: T1〜T9 完了、レビュー済み。reviewer は Approve（Critical・Major なし）。security-reviewer は Critical・High なし、Medium 1 件・Low 2 件。対応: (Medium) ディスク上のキャッシュに上限が無いことを ADR 0005 の「受け入れるリスク」に追記（自前サーバーでは `.next/cache/fetch-cache/` の定期削除と容量の監視が必要。上限付きの `cacheHandler` は依存の追加と ADR が必要なため範囲外）、(Low) ディスクのキャッシュには GitHub の生の応答（非公開リポジトリの情報を含みうる）が入る旨と、`GITHUB_TOKEN` は公開リポジトリだけを読める最小権限にする運用を ADR に明記、ADR の「キャッシュに入るのは公開データだけ」を実態に合わせて修正。(Low) `<title>` が外部入力（`q`、URL の `owner`/`repo`）を長さの上限なしで映す件は、同じ文字列が本文にも出る既存の性質で、新しい影響は小さいため対応しない（申し送り: 将来、タイトルの長さの切り詰めと制御文字・RTL 文字の除去を検討する）。reviewer の Minor（計画の P4/Q14 の食い違い、仕様の未決事項、ADR の根拠の書きぶり）を文書で直した。
