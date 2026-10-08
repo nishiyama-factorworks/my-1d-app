@@ -28,12 +28,12 @@
 - `app/`: ルーティング。薄く保つ
 - `features/<名前>/`: 機能単位（UI・アクション・ロジック・テストを同居）
   - `features/search/`: 検索フォーム（`components/search-form.tsx`）。URL の `q` を初期値にし、送信で `/?q=…&page=1` へ遷移する
-  - 検索結果一覧（`components/search-results.tsx`）。取得は `components/search-content.tsx` の `renderSearchContent` が `searchRepositories` で行う。`app/page.tsx` は `q` があるときだけ、取得を await せず Promise のまま `<Suspense key={buildSearchPath(q, page)} fallback={<LoadingStatus />}>` の中の `SearchContent`（`use` で読む）に渡す。`key` は `q`・`page` だけが変わる遷移でも読み込み中を出すため（どれも Server Component）
+  - 検索結果一覧（`components/search-results.tsx`）。取得は `components/search-content.tsx` の `renderSearchContent` が `searchRepositories` で行う。`app/page.tsx` は `q` があるときだけ、取得を await せず Promise のまま `<Suspense key={buildSearchPath(q, page)} fallback={<LoadingStatus />}>` の中の `SearchContent`（`use` で読む）に渡す。`key` は `q`・`page` だけが変わる遷移でも読み込み中を出すため（どれも Server Component）。各行のリンクは詳細パスに検索条件を付ける（`repoPathFromFullName(fullName, { q, page })` → `buildRepoPathWithSearch`。`/repos/<owner>/<repo>?q=…&page=…`）
   - 0 件の案内（`components/empty-results.tsx`）。`renderSearchContent` が総件数 0 のとき範囲外の判定より先に返す。`GitHubApiError` は `ApiErrorView` を返し、それ以外の例外はそのまま投げる
   - ページネーション（`components/pagination.tsx`。番号の並びは `lib/page-items.ts` の `buildPageItems`）。最大ページ数は `lib/search/` の `calculateMaxPage`。押せない「前へ」「次へ」は `role="link"` と `aria-disabled="true"` の `span`
   - 範囲外ページの案内（`components/out-of-range-notice.tsx`）。範囲外の判定は `renderSearchContent` が 2 段で行う: `page` が `calculateMaxPage(SEARCH_RESULT_LIMIT)`（現在 34）超なら GitHub API を呼ばずに範囲外（422 とレート制限の消費を避ける）、取得後は総件数に対して最終ページ超なら範囲外。総件数 0 は範囲外にしない
   - `features/state-views/`: トップと詳細で共用する状態表示。読み込み中（`components/loading-status.tsx`。`role="status"`）、API エラーの種別ごとの表示（`components/api-error-view.tsx`。`role="alert"`、props は `kind` と `resetAt` だけ）、再試行ボタン（`components/retry-button.tsx`。`router.refresh()`）、リセット時刻の整形（`lib/format-time-in-tokyo.ts`。Asia/Tokyo の `HH:mm`）
-  - `features/repo-detail/`: 詳細表示（`components/repo-detail-view.tsx`。見出し・オーナーアイコン・6 項目・GitHub へのリンク・トップへ戻るリンク）。取得は `app/repos/[owner]/[repo]/page.tsx` が `getRepository` で行い、結果を渡す（どちらも Server Component）。数値と言語の整形は `lib/search/format.ts`
+  - `features/repo-detail/`: 詳細表示（`components/repo-detail-view.tsx`。見出し・オーナーアイコン・6 項目・GitHub へのリンク・トップへ戻るリンク）。取得は `app/repos/[owner]/[repo]/page.tsx` が `getRepository` で行い、結果を渡す（どちらも Server Component）。数値と言語の整形は `lib/search/format.ts`。「トップへ戻る」は `backHref` を props で受け取って描くだけで、`page.tsx` が `searchParams` から `buildBackPath`（`lib/search/back-path.ts`）で計算して渡す
 - `components/ui/`: 再利用 UI（shadcn/ui の部品もここ）
 - `lib/`: 横断ユーティリティ
 - `lib/github/`: GitHub REST API の呼び出し層。GitHub API は**ここだけ**が呼ぶ。公開面は `lib/github/index.ts`（`searchRepositories` / `getRepository` / `GitHubApiError` と型）
@@ -51,6 +51,8 @@
 - GitHub API のエラー: `GitHubApiError`（`kind`: `RATE_LIMIT` `NOT_FOUND` `VALIDATION` `UPSTREAM` `NETWORK`、`status`、`resetAt`）を throw する。メッセージは種別ごとの固定文言で、トークン・URL・レスポンス本文を含めない
 - 状態表示（0010）: 本番の `error.tsx` には Server Component の例外の `message` が届かないため、`GitHubApiError` はページ（トップは `renderSearchContent`、詳細は `page.tsx`）で受け止めて `ApiErrorView` を描画する。想定外の例外は `app/error.tsx`（`retry` で再取得）が受ける。読み込み中は、トップが `<Suspense>`、詳細が `app/repos/[owner]/[repo]/loading.tsx`。ストリーミングで返すため、エラー表示と 404 はどちらも HTTP 200（404 には Next.js が `noindex` を付ける）
 - 詳細ページ（`/repos/<owner>/<repo>`）のエラー: `GitHubApiError` の `kind` が `NOT_FOUND` のときだけ `notFound()` を呼び、`app/repos/[owner]/[repo]/not-found.tsx` を出す（ルートの `app/not-found.tsx` は置かない）。それ以外の `GitHubApiError` は `ApiErrorView`、`GitHubApiError` 以外の例外はそのまま投げる。URL の `owner` `repo` は加工せず `getRepository` に渡し、不正な形式は `getRepository` が `fetch` 前に `NOT_FOUND` にする
+- 検索条件の持ち回り（0009）: 保存せず、詳細ページの URL のクエリ（`q` `page`）で持ち回る。戻り先は `buildBackPath` が `parseSearchParams`（0004）で検証・正規化し、`buildSearchPath` で作り直す（受け取った文字列をそのまま `href` にしない。`q` が空、または 257 文字以上なら `/`、`page` が不正なら 1）。検索条件は `getRepository` の呼び出しに影響しない。404 の「トップへ戻る」は `searchParams` を受け取れないため `/` 固定
+- キーワードの上限 256 は `lib/search/constants.ts`（`SEARCH_KEYWORD_MAX_LENGTH`）と `lib/github/client.ts`（内部の `MAX_Q_LENGTH`）に重複している。一本化は Issue #20（0018）
 - GitHub API 層の防御策: 宛先オリジンは `api.github.com` に固定。公開と確認できないリポジトリは返さない。レスポンスの `avatar_url` / `html_url` は https かつ GitHub のホストのみ許可する
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
 - 認証・認可: <方針>

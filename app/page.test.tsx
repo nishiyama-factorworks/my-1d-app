@@ -569,3 +569,55 @@ describe("トップページ: APIエラーの表示", () => {
     expect(push).not.toHaveBeenCalled();
   });
 });
+
+describe("トップページ: 詳細への行リンク（0009）", () => {
+  function rowLink() {
+    return screen.getByRole("link", { name: "vercel/next.js" });
+  }
+
+  beforeEach(() => {
+    searchRepositories.mockResolvedValue({
+      totalCount: 100,
+      items: [sampleItem],
+    });
+  });
+
+  it("AC-15e: /?q=react&page=3（総件数100）のとき、行 vercel/next.js のリンクの href は /repos/vercel/next.js?q=react&page=3 である", async () => {
+    await renderPage({ q: "react", page: "3" });
+
+    expect(rowLink()).toHaveAttribute(
+      "href",
+      "/repos/vercel/next.js?q=react&page=3",
+    );
+  });
+
+  it("AC-15e（補強）: q が前後に空白のある react・page が 3 のとき、行リンクには正規化済みの q=react が付く", async () => {
+    await renderPage({ q: " react ", page: "3" });
+
+    expect(rowLink()).toHaveAttribute(
+      "href",
+      "/repos/vercel/next.js?q=react&page=3",
+    );
+  });
+
+  it("AC-15e（補強）: page が abc のとき、行リンクには補正後の page=1 が付く", async () => {
+    await renderPage({ q: "react", page: "abc" });
+
+    expect(rowLink()).toHaveAttribute(
+      "href",
+      "/repos/vercel/next.js?q=react&page=1",
+    );
+  });
+
+  it("AC-15d: q が「日本語 & react」・page 2（総件数100）のとき、入力欄の初期値は元の文字列で、行リンクの q を読み戻すと元の文字列になる", async () => {
+    await renderPage({ q: "日本語 & react", page: "2" });
+
+    expect(screen.getByRole("searchbox", { name: "キーワード" })).toHaveValue(
+      "日本語 & react",
+    );
+    const href = rowLink().getAttribute("href") ?? "";
+    expect(new URL(href, "http://localhost").searchParams.get("q")).toBe(
+      "日本語 & react",
+    );
+  });
+});

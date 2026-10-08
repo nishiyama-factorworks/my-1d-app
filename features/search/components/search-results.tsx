@@ -8,9 +8,13 @@ import { repoPathFromFullName } from "../lib/repo-path";
 export function SearchResults({
   totalCount,
   items,
+  q,
+  page,
 }: {
   totalCount: number;
   items: readonly RepoSummary[];
+  q: string;
+  page: number;
 }) {
   return (
     <section className="flex flex-col gap-4">
@@ -27,7 +31,7 @@ export function SearchResults({
               className="rounded-full"
             />
             <Link
-              href={repoPathFromFullName(item.fullName)}
+              href={repoPathFromFullName(item.fullName, { q, page })}
               className="break-all underline"
             >
               {item.fullName}

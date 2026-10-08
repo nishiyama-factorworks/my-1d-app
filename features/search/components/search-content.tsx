@@ -52,7 +52,12 @@ export async function renderSearchContent({
 
   return (
     <>
-      <SearchResults totalCount={result.totalCount} items={result.items} />
+      <SearchResults
+        totalCount={result.totalCount}
+        items={result.items}
+        q={q}
+        page={page}
+      />
       <Pagination q={q} currentPage={page} maxPage={maxPage} />
     </>
   );

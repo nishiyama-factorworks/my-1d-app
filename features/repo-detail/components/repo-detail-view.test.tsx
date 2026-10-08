@@ -19,6 +19,10 @@ function makeRepo(overrides: Partial<RepoDetail> = {}): RepoDetail {
   };
 }
 
+function renderView(repo: RepoDetail = makeRepo(), backHref = "/") {
+  return render(<RepoDetailView repo={repo} backHref={backHref} />);
+}
+
 // <dt> と <dd> を出現順に組にして [ラベル, 値] の配列にする。
 function getPairs(): [string | null, string | null][] {
   const terms = screen.getAllByRole("term");
@@ -31,7 +35,7 @@ function getPairs(): [string | null, string | null][] {
 
 describe("RepoDetailView: 詳細の表示", () => {
   it("AC-11a: レベル1の見出しに vercel/next.js が表示される", () => {
-    render(<RepoDetailView repo={makeRepo()} />);
+    renderView();
 
     expect(
       screen.getByRole("heading", { level: 1, name: "vercel/next.js" }),
@@ -39,13 +43,13 @@ describe("RepoDetailView: 詳細の表示", () => {
   });
 
   it("AC-11a: オーナーアイコンが代替テキスト vercel で表示される", () => {
-    render(<RepoDetailView repo={makeRepo()} />);
+    renderView();
 
     expect(screen.getByRole("img", { name: "vercel" })).toBeInTheDocument();
   });
 
   it("AC-11a: アイコンの画像の元 URL は ownerAvatarUrl である", () => {
-    render(<RepoDetailView repo={makeRepo()} />);
+    renderView();
 
     const src = screen.getByRole("img", { name: "vercel" }).getAttribute("src");
     expect(src).not.toBeNull();
@@ -55,7 +59,7 @@ describe("RepoDetailView: 詳細の表示", () => {
   });
 
   it("AC-11a: ラベル オーナー・言語・Star数・Watcher数・Fork数・Issue数 に、vercel・TypeScript・各数値が対で表示される", () => {
-    render(<RepoDetailView repo={makeRepo()} />);
+    renderView();
 
     expect(getPairs()).toEqual([
       ["オーナー", "vercel"],
@@ -68,15 +72,13 @@ describe("RepoDetailView: 詳細の表示", () => {
   });
 
   it("AC-13: Star数100・Watcher数7・Issue数5 のとき、それぞれの値が表示され、Watcher数にStar数を表示しない", () => {
-    render(
-      <RepoDetailView
-        repo={makeRepo({
-          stargazersCount: 100,
-          watchersCount: 7,
-          forksCount: 42,
-          openIssuesCount: 5,
-        })}
-      />,
+    renderView(
+      makeRepo({
+        stargazersCount: 100,
+        watchersCount: 7,
+        forksCount: 42,
+        openIssuesCount: 5,
+      }),
     );
 
     const pairs = getPairs();
@@ -92,11 +94,7 @@ describe("RepoDetailView: 詳細の表示", () => {
   });
 
   it("AC-14a: Star数1234567は 1,234,567、Fork数0は 0 と表示される", () => {
-    render(
-      <RepoDetailView
-        repo={makeRepo({ stargazersCount: 1234567, forksCount: 0 })}
-      />,
-    );
+    renderView(makeRepo({ stargazersCount: 1234567, forksCount: 0 }));
 
     const pairs = getPairs();
     expect(pairs).toContainEqual(["Star数", "1,234,567"]);
@@ -104,13 +102,13 @@ describe("RepoDetailView: 詳細の表示", () => {
   });
 
   it("AC-14b: language が null のとき言語欄に - が表示される", () => {
-    render(<RepoDetailView repo={makeRepo({ language: null })} />);
+    renderView(makeRepo({ language: null }));
 
     expect(getPairs()).toContainEqual(["言語", "-"]);
   });
 
   it("AC-11b: 名前が「GitHub で開く」のリンクの href が htmlUrl と等しく、target を持たず、rel が noopener noreferrer である", () => {
-    render(<RepoDetailView repo={makeRepo()} />);
+    renderView();
 
     const link = screen.getByRole("link", { name: "GitHub で開く" });
     expect(link).toHaveAttribute("href", "https://github.com/vercel/next.js");
@@ -119,12 +117,21 @@ describe("RepoDetailView: 詳細の表示", () => {
   });
 
   it("AC-11c: 名前が「トップへ戻る」のリンクの href が / で、モーダル（role=dialog）は無い", () => {
-    render(<RepoDetailView repo={makeRepo()} />);
+    renderView(makeRepo(), "/");
 
     expect(screen.getByRole("link", { name: "トップへ戻る" })).toHaveAttribute(
       "href",
       "/",
     );
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("AC-15a: backHref が /?q=react&page=3 のとき、「トップへ戻る」の href が /?q=react&page=3 である", () => {
+    renderView(makeRepo(), "/?q=react&page=3");
+
+    expect(screen.getByRole("link", { name: "トップへ戻る" })).toHaveAttribute(
+      "href",
+      "/?q=react&page=3",
+    );
   });
 });
