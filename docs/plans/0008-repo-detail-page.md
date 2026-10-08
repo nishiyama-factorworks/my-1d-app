@@ -126,7 +126,12 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `app/repos/[owner]/[repo]/page.tsx`、`app/repos/[owner]/[repo]/page.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`（`PageProps<"/repos/[owner]/[repo]">` の型生成を含む）PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: 文書の更新と最終確認**
+- [x] **T3: 文書の更新と最終確認**
+  - 進捗（2026-10-08）: `docs/architecture.md` を更新（3 節に `features/repo-detail/`、5 節に詳細ページのエラーの扱い）。`bash scripts/verify.sh`（full）は typecheck・lint・test・build すべて PASS。
+  - 手動確認（`next start -p 3111`、実 API。ブラウザは使えず curl で確認）:
+    - `/repos/vercel/next.js` → 200。h1 `vercel/next.js`、6 項目（オーナー vercel／言語／Star数 143,243／Watcher数 1,630／Fork数 34,141／Issue数 3,569。桁区切りあり）、`GitHub で開く`（href・`rel="noopener noreferrer"`・`target` なし）、`トップへ戻る`（`/`）、アイコン `alt="vercel"`。アイコンの画像 `/_next/image?...` は 200（image/png）で、`remotePatterns` と一致している。
+    - 存在しない `/repos/vercel/this-repo-does-not-exist-0008` → 404、形式が不正な `/repos/a%20b/c` → 404（AC-20a）。URL が大文字の `/repos/VERCEL/NEXT.JS` → 200 で、見出しは API の応答の `vercel/next.js`（AC-12）。
+    - 未確認: ① 一覧の行リンクのプリフェッチで `getRepository` が呼ばれないか（RSC のヘッダーを付けた curl が 307 になり再現できなかった。`loading.tsx` が無いので先読みは既定の `auto` の見込みだが、実測していない）、② 幅 320px での折り返し、③ ブラウザでのリンク遷移（クリック）。いずれも PR で人間の確認を依頼する。
   - 対応 AC: なし（文書・検証）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（3節に「`features/repo-detail/`: 詳細表示（`components/repo-detail-view.tsx`）。取得は `app/repos/[owner]/[repo]/page.tsx` が `getRepository` で行い、結果を渡す（Server Component）」、5節に「詳細ページは `GitHubApiError` の `NOT_FOUND` のときだけ `notFound()`。それ以外の例外はそのまま投げる（専用表示は 0010）」を追記）、本計画の進捗メモ（2 ファイル）
