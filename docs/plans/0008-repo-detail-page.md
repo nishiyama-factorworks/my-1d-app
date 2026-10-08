@@ -92,7 +92,8 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: 詳細表示コンポーネント**
+- [x] **T1: 詳細表示コンポーネント**
+  - 進捗: RED（`<div />` の仮実装で 9 件すべて失敗。要素が見つからない）→ GREEN（verify --quick PASS）。変異確認: Watcher数にStar数を表示／桁区切りなし／言語の `-` なし／`rel` を外す／`target="_blank"` を付ける／戻る先の変更／alt の変更／アイコンを h1 の中に入れる／Issue数の取り違え、の 9 つすべてで検出。RED のテストは別セッション（my-app-ed）が書き、GREEN 以降をこのセッションが引き継いだ。
   - 対応 AC: AC-11a、AC-11b、AC-11c（リンクとモーダルなしの部分）、AC-13、AC-14a、AC-14b（コンポーネント単位）
   - 先に書くテスト: `features/repo-detail/components/repo-detail-view.test.tsx`（jsdom。モックなし。テストファイル内に `makeRepo(overrides: Partial<RepoDetail> = {}): RepoDetail` を置き、既定値は `fullName: "vercel/next.js"`、`ownerLogin: "vercel"`、`ownerAvatarUrl: "https://avatars.githubusercontent.com/u/14985020?v=4"`、`language: "TypeScript"`、`stargazersCount: 1234567`、`watchersCount: 7`、`forksCount: 0`、`openIssuesCount: 5`、`htmlUrl: "https://github.com/vercel/next.js"`。各数値を互いに異なる値にして取り違えを検出する。対の取り出しは `getAllByRole("term")` と `getAllByRole("definition")` を順に組にするヘルパ）
     - `AC-11a: レベル1の見出しに vercel/next.js が表示される`（`getByRole("heading", { level: 1, name: "vercel/next.js" })`。名前の完全一致で、アイコンが見出しに混ざると失敗する）
