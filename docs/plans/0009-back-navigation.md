@@ -96,7 +96,9 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: 検索条件付きの詳細 URL を作る純粋関数**
+- [x] **T1: 検索条件付きの詳細 URL を作る純粋関数**
+  - 進捗: RED（27 件中 9 件失敗。仮実装 `""`）→ GREEN（verify --quick PASS、645 件）。変異確認: クエリを素の連結にする／`q` と `page` の順序を入れ替える、の 2 つで検出。
+  - 補足: test-writer への依頼文の署名が計画 1.1 と違い（`q, page` を別引数）、RED のテストと仮実装を計画どおり `{ q, page }` のオブジェクトに直してから GREEN に進んだ（期待値は変えていない。呼び出しの形だけ）。
   - 対応 AC: AC-15e（URL の形）、AC-15d（行リンク側の符号化と読み戻し）
   - 先に書くテスト: `lib/search/paths.test.ts`（`// @vitest-environment node` のまま。`describe("buildRepoPathWithSearch")` を追加）
     - `AC-15e: owner vercel・repo next.js・q react・page 3 のとき /repos/vercel/next.js?q=react&page=3 を返す`
