@@ -58,3 +58,22 @@ describe("想定外の例外の受け皿 error.tsx", () => {
     expect(retry).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("error.tsx: キーボード操作（0011）", () => {
+  it.each([
+    { label: "Enter", key: "{Enter}" },
+    { label: "Space", key: " " },
+  ])(
+    "AC-26b1: 「再試行」ボタンにフォーカスして $label を押すと retry が1回呼ばれる",
+    async ({ key }) => {
+      const user = userEvent.setup();
+      const retry = vi.fn();
+      render(<ErrorPage error={new Error("boom")} retry={retry} />);
+      screen.getByRole("button", { name: "再試行" }).focus();
+
+      await user.keyboard(key);
+
+      expect(retry).toHaveBeenCalledTimes(1);
+    },
+  );
+});

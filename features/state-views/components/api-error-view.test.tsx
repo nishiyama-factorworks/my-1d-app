@@ -126,3 +126,21 @@ describe("ApiErrorView: 再試行", () => {
     );
   });
 });
+
+describe("ApiErrorView: キーボード操作（0011）", () => {
+  it.each([
+    { label: "Enter", key: "{Enter}" },
+    { label: "Space", key: " " },
+  ])(
+    "AC-26b1: 「再試行」ボタンにフォーカスして $label を押すと router.refresh() が1回呼ばれる",
+    async ({ key }) => {
+      const user = userEvent.setup();
+      render(<ApiErrorView kind="UPSTREAM" />);
+      screen.getByRole("button", { name: "再試行" }).focus();
+
+      await user.keyboard(key);
+
+      expect(refresh).toHaveBeenCalledTimes(1);
+    },
+  );
+});

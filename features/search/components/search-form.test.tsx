@@ -188,3 +188,27 @@ describe("SearchForm: 空入力の案内", () => {
     expect(push).toHaveBeenCalledWith("/?q=react&page=1");
   });
 });
+
+describe("SearchForm: キーボード操作（0011）", () => {
+  it.each([
+    { label: "Enter", key: "{Enter}" },
+    { label: "Space", key: " " },
+  ])(
+    "AC-26b1: 「react」を入力し「検索」ボタンにフォーカスして $label を押すと /?q=react&page=1 へ遷移する",
+    async ({ key }) => {
+      const user = userEvent.setup();
+      render(<SearchForm initialQuery="" />);
+      await user.type(
+        screen.getByRole("searchbox", { name: "キーワード" }),
+        "react",
+      );
+      await user.tab();
+      expect(screen.getByRole("button", { name: "検索" })).toHaveFocus();
+
+      await user.keyboard(key);
+
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(push).toHaveBeenCalledWith("/?q=react&page=1");
+    },
+  );
+});

@@ -237,7 +237,8 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `tests/a11y/page-structure.test.tsx`、`app/error.tsx`、`app/error.test.tsx`、`app/repos/[owner]/[repo]/page.tsx`、`page.test.tsx`（5 ファイル）
   - 完了条件: 1.2 (g) の変更以外の期待値を変えずに通る。`pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T7: キーボード操作（Tab 順と Enter / Space）**
+- [x] **T7: キーボード操作（Tab 順と Enter / Space）**
+  - 進捗: テストのみ（現状で満たしている AC のため、追加した 11 件は書いた時点で全件が通った。想定どおり）。変異で検出力を確認: 行リンクに `tabIndex={-1}`（page.test の新規 4 件が失敗）／押せない `前へ` の `span` に `tabIndex={0}`（「止まらない」2 件が失敗）／`検索` を `type="button"`（Enter・Space 2 件が失敗）／`RetryButton` の `<button>` を `<span onClick>`（api-error-view の Enter・Space が失敗）／`app/error.tsx` の `<button>` を `<span onClick>`（error.test の Enter・Space が失敗。`error.tsx` は `RetryButton` を使わないため別に確認）。全件の変異を元に戻したことを `git diff` で確認。
   - 対応 AC: AC-26b1
   - 先に書くテスト:
     - `app/page.test.tsx`（`describe("トップページ: キーボード操作（0011）")`。1.2 (f)）
