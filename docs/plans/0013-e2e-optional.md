@@ -158,7 +158,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
     7. 環境変数をモジュールの読み込み時に 1 回だけ読む → `vi.stubEnv` を使う AC-31c・AC-31e が失敗する（呼び出しごとに読むことの固定）。
   - 完了条件: 追加・既存のテストがすべて通る。既存テストの期待値の変更 0 件。`bash scripts/verify.sh --quick` PASS。`token-leak.test.ts`（AC-23d）も無変更で通る。
 
-- [ ] **T3: Playwright の設定・シナリオ 2 本（RED）と、Vitest からの除外**（`test(e2e)`）
+- [x] **T3: Playwright の設定・シナリオ 2 本（RED）と、Vitest からの除外**（`test(e2e)`）
   - 対応 AC: AC-31a・AC-31b（RED まで）、AC-31g（GREEN まで）
   - 先に書くテスト:
     - `e2e/search-to-detail.spec.ts`（AC-31a）: `test("AC-31a: react で検索し、2 ページ目から詳細へ進み、トップへ戻ると 2 ページ目の一覧が復元される")`
@@ -297,3 +297,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: T1 完了。ADR 0006（Status: Proposed。ライセンス Apache-2.0 を `node_modules/@playwright/test/LICENSE` と `package.json` で確認、開発元 Microsoft Corporation。リリース頻度と Cypress の詳細は未確認と明記）。`.gitignore` に `/test-results/`・`/playwright-report/`、`eslint.config.mjs` の `globalIgnores` に同じ 2 つを追加。`git check-ignore` は両方 0。`package.json`・`pnpm-lock.yaml` のステージは Claude で通った（Q12。hook に止められなかった）。`verify.sh --quick` PASS。
 
 - 2026-10-09: T2 完了。RED: 16 件失敗・26 件成功（AC-31c の 3 件、AC-31d の 11 件、AC-23e 維持の `https://api.github.com/x` の 1 件、AC-31e の 1 件。いずれも未実装による期待値の不一致）。AC-31f の 2 件と既存 24 件は緑。GREEN: `resolveBaseOrigin` を切り出し、`githubGet` が呼び出しごとに `GITHUB_API_BASE_URL` を読む。上書き中は `Authorization` を付けない。`verify.sh --quick` PASS。変異 14 件を入れて、最初は 2 件（ユーザー名だけ・パスワードだけの検査を外す変異 2d・2e）を見逃した。原因はテストの認証情報の行が `user:pass@` の 1 行だけで、2 つの検査が互いを隠していたこと。`http://user@…` と `http://:pass@…` の 2 行をテストに足し、14 件すべて検出・復元を確認。`http.test.ts` の既存行の削除 0 件（134 行の追加）。
+
+- 2026-10-09: T3 完了。AC-31g の RED: 除外前の `vitest run` で `tests/foundation/vitest-excludes-e2e.test.ts` の「含まれない」が `expected ['e2e/search-empty.spec.ts', …(1)] to deeply equal []` で失敗し、Vitest が `e2e/*.spec.ts` を拾って Playwright の `test.beforeEach() ... async test.describe()` のエラーでも失敗した。GREEN: `vitest.config.mts` に `exclude: [...configDefaults.exclude, "e2e/**"]`（`configDefaults.exclude` を外すと `node_modules` 配下の 869 ファイルが対象に入ることを確認し、理由をコメントに記載）。`pnpm vitest run` 47 ファイル・934 件 PASS、`verify.sh --quick` PASS。E2E の RED（`pnpm test:e2e`）: 2 件失敗（AC-31a は `getByText('総ヒット件数: 45 件')` が見つからない、AC-31b は 0 件の案内が見つからない）。アプリ（`pnpm build` → `pnpm start -p 3100`）とブラウザは起動しており、画面は「GitHub に接続できませんでした」（`NETWORK`）。モック（4010）が無く、接続先の上書きが効いた結果で、実 API には接続していない（存在しないキーワードなら実 API は 0 件で通るはずのため）。実行後、サーバー停止済み、`git status` に `AGENTS.md`・`next-env.d.ts` の差分なし（`test-results/` は gitignore）。E2E は T4 で GREEN にする。
