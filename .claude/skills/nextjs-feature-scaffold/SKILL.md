@@ -10,14 +10,14 @@ description: Next.js（App Router）で新しい機能（ページ・コンポ�
 ## 構成（feature-first）
 
 ```
-src/features/<feature>/
+features/<feature>/
   components/        その機能専用の UI（*.tsx と *.test.tsx を同居）
   actions.ts         Server Actions（"use server"）。入力は zod で検証
   schema.ts          zod スキーマと型（入力検証の単一の情報源）
   queries.ts         読み取り系の関数（server-only）
   lib/               純粋なロジック（副作用なし。単体テストの主対象）
   <name>.test.ts(x)  テスト（対象の隣に置く）
-src/app/<route>/
+app/<route>/
   page.tsx           薄く保つ。features を組み立てるだけ
   loading.tsx / error.tsx
 e2e/<feature>.spec.ts  主要シナリオのみ

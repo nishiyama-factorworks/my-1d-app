@@ -1,11 +1,10 @@
 ---
 paths:
-  - "src/app/**/*.{ts,tsx}"
   - "app/**/*.{ts,tsx}"
-  - "src/features/**/*.{ts,tsx}"
+  - "features/**/*.{ts,tsx}"
   - "next.config.*"
   - "middleware.ts"
-  - "src/middleware.ts"
+  - "proxy.ts"
 ---
 
 # Next.js（App Router）ルール
@@ -24,7 +23,7 @@ paths:
 
 ## ルーティング・ファイル規約
 
-- `page.tsx` は薄く保つ。データ取得と表示の組み立て以外のロジックは `src/features/<名前>/` に置く。
+- `page.tsx` は薄く保つ。データ取得と表示の組み立て以外のロジックは `features/<名前>/` に置く。
 - ルートごとに `loading.tsx` / `error.tsx` を必要に応じて用意し、`not-found` は `notFound()` で扱う。
 - メタデータは `metadata` / `generateMetadata` で定義する。`<head>` を手書きしない。
 
