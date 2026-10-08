@@ -115,7 +115,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 > 分け方の考え方: コミット前に `bash scripts/verify.sh --quick` の PASS が必要で、RED のテストはコミットできない。そこで「その節のテスト（RED を作業ツリーで確認）→ その節の本文（GREEN）」を 1 コミットにし、節のまとまりごとに 3 コミットに分ける（Q2）。見出しの検査は T1 で README に見出しだけを置いて GREEN にする。README の各節は T2・T3 の時点で中身が増えるだけなので、前のタスクのテストは緑のまま保たれる。各タスクは 3 ファイル以内（README・テスト・本計画）。
 
-- [ ] **T1: 事実の調査と記録、検査の土台（純粋関数）、見出しの骨組み**（`docs(readme)` または `test(docs)`。Q12）
+- [x] **T1: 事実の調査と記録、検査の土台（純粋関数）、見出しの骨組み**（`docs(readme)` または `test(docs)`。Q12）
   - 対応 AC: AC-30a〜AC-30d（見出しの前提）、AC-30f、AC-30g（判定関数と、README の現物への検査）
   - 調査（README に書く事実の一次情報を読み、根拠を本計画の「8. 進捗メモ」の「調査の記録」に箇条書きで残す。推測で埋めない。確認できないものは「未確認」と書く）:
     1. セットアップ: `package.json` の `scripts` と `packageManager`、`ci.yml` の Node のバージョン、`.claude/harness.env` の `INSTALL_CMD`。`GITHUB_TOKEN` の扱いは `docs/architecture.md` 5・6 節、`tests/foundation/env-files.test.ts`、仕様 0003 で確認する（`.env*` は読まない。hook でもブロックされる）。トークン未設定時の挙動（レート制限が低くなる）は仕様 0003 の記述の範囲で書く。
@@ -276,3 +276,18 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: 計画作成（draft）。未着手。人間の承認（特に Q1・Q2・Q9）を得てから T1 に入る。`/issue split` はせず 1 PR で進める想定（4 タスク）。
 
 - 2026-10-09: 人間が計画を承認（Q2〜Q13 すべて推奨どおり）。Q1（`components/` が実在しない件）は「READMEに「未作成」と事実どおり書き、仕様を先に直す」に決定し、仕様 0012 の AC-30b・AC-30f と変更履歴を直した。Status: in-progress。T1 から着手。
+
+- 2026-10-09: T1 完了。
+  - テスト RED: `tests/docs/readme.test.ts`（24 件）。純粋関数を空実装にした状態で 25 件中 14 件が失敗（陽性 11 件と現物 3 件）。関数を実装後、README が 1 行のままで 2 件失敗（見出し: `expected [] to deeply equal [ { level: 2, text: '概要' }, …(14) ]`、AC-30f: `expected 0 to be greater than 0`）、22 件成功。AC-30g の現物は最初から緑。
+  - GREEN: README に 5 つの `##` と 10 個の `###` の見出しだけを置き、`## 概要` に仕様 0001 への相対リンクを 1 つ置いた（Q7）。24 件すべて PASS、`verify.sh --quick` PASS。
+  - 変異（骨組みの README に適用できるもの）: 見出しの削除・改名・順序入れ替え・余計な `##`、リンク先の改名・大文字小文字の変更、トークン形式の混入、`GITHUB_TOKEN=` に値を付ける、の 8 件をすべて検出。陰性（`GITHUB_TOKEN=` だけ、コードブロック内の `#`）は通過。README を復元。
+  - テスト作成時の注意（T2 以降）: 「未作成」の除外は行単位なので、README の `components/` は同じ行に「未作成」と書く。`ghp_` / `github_pat_` という文字列は README に書かない（言及するだけで AC-30g に引っかかる）。`GITHUB_TOKEN=<…>` のプレースホルダーも値ありと判定されるので避ける。
+  - 調査の記録（README に書く事実の一次情報。書く時点で再確認する）:
+    1. セットアップ: `package.json` の `scripts` は `dev` `typecheck` `lint` `test` `test:e2e` `build` `start` `format`、`packageManager` は `pnpm@12.9.1`、`engines` は無し。CI の Node は 22（`ci.yml`）、ローカルの確認環境は Node v24.21.0。E2E は `pnpm exec playwright install chromium` が前提（ADR 0006）。`GITHUB_TOKEN` は任意（`.env.example` に値なしで記載、公開リポジトリ読み取りのみの最小権限を推奨）。`.env*` は読んでいない。
+    2. 構成: ルート直下に `app/`（`/` と `/repos/[owner]/[repo]`、`loading.tsx` `not-found.tsx` `error.tsx`）、`features/`、`lib/`、`tests/`（`a11y/` `foundation/` `harness/` `docs/`）、`e2e/`（`mock-api/server.ts`）、`docs/`（specs・plans・adr・architecture.md・quality-gates.md）、`scripts/`、`.claude/`。`components/` は存在しない（`CLAUDE.md` 6 節の構成には `components/ui/` が予約されている）。
+    3. 工夫した点の根拠: Watcher 数は検索 API の `watchers_count` が Star 数と同値のため使わず、個別 API の `subscribers_count`（親仕様 0001 の 7 節）。API 呼び出しはサーバー側のみで `import "server-only"`（仕様 0003、architecture.md 5 節）。状態は保存せず URL のクエリ（`q` `page`）で持ち回る（仕様 0009）。1,000 件上限は `SEARCH_RESULT_LIMIT`、最大ページ数 34 を超える `page` は GitHub API を呼ばずに範囲外の案内（architecture.md 5 節、仕様 0007）。キャッシュは `fetch` の `next.revalidate`（検索 300 秒・詳細 600 秒、ADR 0005）。
+    4. 範囲と制約: 親仕様 0001 の 8 節（セキュリティ・信頼性・アクセシビリティ・パフォーマンス・見やすさ・メタデータ・品質ゲート・テスト方針）と 9 節の後送り事項（アプリのタイトルは `lib/app-config.ts` の `APP_NAME` という仮の定数、対応ブラウザ・ダークモードは未決のまま）。既知の制約は 1,000 件上限とレート制限（認証なしの検索 API は 1 分 10 回、コア API は 1 時間 60 回。ADR 0005 の記述）。
+    5. AI 利用の事実（2026-10-09 に確認）: `git log --oneline` は 24 件、マージ済み PR は 18 件（`gh pr list --state merged`）、`docs/specs/`（`_template.md`・`_assignment.md` を除く）は 20 本、ADR は 6 本（`0000-template.md` を除く 0001〜0006）、コミット本文の `Co-Authored-By` に現れるモデル名は Claude Opus 5.5 と Claude Sonnet 5.5（表記は大文字小文字のゆれあり）。`.claude/` は agents 5（implementer・planner・reviewer・security-reviewer・test-writer）、commands 11、skills 3。`scripts/verify.sh` が全品質ゲート。
+    6. 人間が判断・修正した点（確認できたもの）: 仕様 0012 の言語・形式・テスト方針と、`components/` 未作成による AC-30b・AC-30f の修正（本 PR）。仕様 0019（Issue #21）でサロゲートは届かないと調査して対応しない、ゼロ幅スペースは対応すると人間が判断（PR #37）。仕様 0013 で接続先の上書きをループバック限定・上書き中はトークンを送らない設計にし、依存追加（Playwright）を人間が承認して実行（PR #38）。計画 0016 の T1 で保護ファイルを確認画面を経ずに一時書き換えた手順の逸脱を、reviewer が Major として指摘し、PR 本文で開示（PR #34）。
+    7. AI の出力で注意した点（確認できたもの）: 計画 0013 の T2 で変異が認証情報の検査 2 件を見逃し、テストの行を足して全件検出（PR #38）。計画 0020 のレビューで AC-3 が計画の `it.each` 6 件でなく 1 つの `it` だった食い違いを Major として直した（PR #36）。ツールの書き込みでゼロ幅文字が生の文字に展開された問題をエスケープ表記に直し、node で全文走査して 0 件を確認（PR #37）。仕様・計画に書かれた事実は一次情報で確認し、未確認は未確認と書く（`CLAUDE.md` 5 節）。
+    - 個人情報: コミットの作者名・メールアドレス・ローカルの絶対パスは記録していない。
