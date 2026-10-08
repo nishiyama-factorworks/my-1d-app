@@ -109,7 +109,9 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `features/repo-detail/components/repo-detail-view.tsx`、`features/repo-detail/components/repo-detail-view.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: 詳細ページのルート（取得・404・例外）**
+- [x] **T2: 詳細ページのルート（取得・404・例外）**
+  - 進捗: RED（`<div />` の仮実装で 10 件すべて失敗）→ GREEN（verify --quick PASS）。`notFound()` は本物の `next/navigation` を使い、`digest` で検証した（jsdom の Vitest で読み込めることを事前に確認。モックへの切り替えは不要）。変異確認: 全例外で `notFound()`／握りつぶして投げない／`kind` を見ない／owner・repo の小文字化／取得を 2 回呼ぶ／`notFound()` を呼ばない、の 7 つすべてで検出。
+  - 補足: `<main>` は上寄せ（`justify-center` なし）にした。トップ（`app/page.tsx`）は変更していない。
   - 対応 AC: AC-12、AC-20a、AC-20b、AC-11a・AC-11c（ページ単位: 独立したページとして表示される）
   - 先に書くテスト: `app/repos/[owner]/[repo]/page.test.tsx`（jsdom。1.2 (b) のモック。`renderPage(params: { owner: string; repo: string })` で `render(await Page({ params: Promise.resolve(params), searchParams: Promise.resolve({}) }))`。`GitHubApiError` は `@/lib/github/errors` から import）
     - `AC-12: /repos/vercel/next.js を直接開くと getRepository("vercel", "next.js") を1回呼ぶ`（`toHaveBeenCalledTimes(1)`、`toHaveBeenCalledWith("vercel", "next.js")`）
