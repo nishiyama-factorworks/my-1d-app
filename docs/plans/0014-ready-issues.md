@@ -27,7 +27,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 | 判定 | `classifyIssues(input: { issues: IssueSummary[]; specDependencies: Map<string, string[]>; assumeClosed: number[] }): Classification`（1.2 (c)） |
 | 表示 | `sanitizeForTerminal(text: string): string`、`formatClassification(c: Classification): string[]`（1.2 (d)） |
 | Project | `findStatusField(fields: ProjectField[]): StatusFieldResult`、`planProjectUpdates(input: { candidates: ReadyEntry[]; items: ProjectItem[]; repository: string }): PlanEntry[]`、`formatPlan(entries: PlanEntry[]): string[]`（1.2 (e)） |
-| `gh` の境界 | `GhRunner = (args: string[]) => Promise<GhResult>`、`GhResult = { ok: true; stdout: string } \| { ok: false; stderr: string; exitCode: number \| null }`。例外を投げない。引数の組み立てと JSON の検証は純粋関数（1.2 (f)） |
+| `gh` の境界 | `GhRunner = (args: string[]) => Promise<{ stdout: string }>`。失敗時は `stderr` を持つ Error を reject する（T6 で ok 型から変更。2026-10-08）。引数の組み立てと JSON の検証は純粋関数（1.2 (f)） |
 | CLI | `parseCliArgs(argv: string[]): { ok: true; options: CliOptions } \| { ok: false; message: string }`、`runReadyIssues(deps: { argv: string[]; runGh: GhRunner; readSpecFiles: () => Promise<SpecFile[]>; out: (line: string) => void; err: (line: string) => void }): Promise<number>`（戻り値が終了コード。1.2 (g)） |
 | 引数 | `node:util` の `parseArgs`（`strict: true`）。`--assume-closed`（文字列・複数）、`--project`（文字列→正の整数）、`--owner`（文字列）、`--apply`（真偽）。短縮形は作らない |
 | 終了コード | 0（正常。候補 0 件も 0）／1（使い方の誤り、`gh` の失敗、権限不足、Project の不整合、更新の失敗が 1 件以上）。仕様 6.2 どおり |
@@ -284,7 +284,11 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `scripts/lib/ready-issues-gh.mjs`、`scripts/lib/ready-issues-gh.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T6: CLI（引数のパースと読み取りの流れ）**
+- [x] **T6: CLI（引数のパースと読み取りの流れ）**
+  - 進捗: RED（41 件中 38 件失敗）→ GREEN（verify --quick PASS）。変異確認: 9 つ（`--apply` の制約 2 種、上限警告の境界、権限不足の案内、所有者の既定、位置引数、owner の検証、Status 検証、stderr の sanitize）すべてで検出。
+  - テストの修正（理由つき）: RED の `--assume-closed 8 9` は #9 自身も仮定クローズして「#9 が ready」を期待していたが、計画 T2 の「仮定した Issue 自身は候補に出さない」と矛盾していた。2 つ目を #10（0009 と無関係）に変えた。期待値を弱めたのではなく、テストの前提の誤りの訂正。
+  - REFACTOR: `displayTitle` を format.mjs から export して project.mjs と共通化した。
+  - 注意: この時点の `--apply` は読み取りまでで item-edit を呼ばない（T7 で実装）。
   - 対応 AC: AC-12（引数）、AC-13、AC-14、AC-17、AC-18、AC-19（Project が無い）、仕様 7 節（1,000 件の警告）
   - 先に書くテスト: `scripts/lib/ready-issues-cli.test.ts`（偽の `runGh` は呼ばれた引数の配列を記録し、引数に応じて用意した `stdout` / 失敗を返す。`readSpecFiles` はリテラルの仕様を返す。`out` / `err` は配列に集める）
     - `AC-12: --assume-closed 8 と --assume-closed 8 9 と #8 を受け付け、不正な番号は使い方の誤りで終了コード 1`

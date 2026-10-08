@@ -19,7 +19,7 @@ export function sanitizeForTerminal(text) {
  * @param {string} title
  * @returns {string}
  */
-function displayTitle(title) {
+export function displayTitle(title) {
   return sanitizeForTerminal(title.replace(/^\[[^\]]*\]\s*\d{4}\s*/u, ""));
 }
 

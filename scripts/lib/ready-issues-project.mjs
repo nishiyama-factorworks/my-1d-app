@@ -1,5 +1,5 @@
 // @ts-check
-import { sanitizeForTerminal } from "./ready-issues-format.mjs";
+import { displayTitle, sanitizeForTerminal } from "./ready-issues-format.mjs";
 
 /**
  * @typedef {{ id: string; name: string; options?: { id: string; name: string }[] }} ProjectField
@@ -73,10 +73,7 @@ export function planProjectUpdates({ candidates, items, repository }) {
  * @returns {string}
  */
 function formatEntry(entry) {
-  // Issue のタイトルは他者が書いた入力。先頭の「[種別] NNNN 」を除いて制御文字を取り除く。
-  const title = sanitizeForTerminal(
-    entry.title.replace(/^\[[^\]]*\]\s*\d{4}\s*/u, ""),
-  );
+  const title = displayTitle(entry.title);
   const head = `#${entry.issueNumber} ${entry.specNumber} ${title}`;
   const current = sanitizeForTerminal(entry.currentStatus ?? "なし");
   if (entry.action === "update") {
