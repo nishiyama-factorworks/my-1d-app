@@ -191,7 +191,13 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `features/repo-detail/components/repo-detail-view.tsx`、`repo-detail-view.test.tsx`、`app/repos/[owner]/[repo]/page.tsx`、`page.test.tsx`（4 ファイル）
   - 完了条件: 既存の AC-11a〜14b・AC-12・AC-18a〜20b のテストが期待値を変えずに通る。`pnpm test`・`pnpm typecheck`（`PageProps` の `searchParams` を含む）・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: 文書の更新と最終確認**
+- [x] **T5: 文書の更新と最終確認**
+  - 進捗（2026-10-08）: `docs/architecture.md` を更新（3 節に行リンクの検索条件と `backHref`、5 節に検索条件の持ち回りとキーワード上限の重複）。`bash scripts/verify.sh`（full）は typecheck・lint・test・build すべて PASS。`pnpm build` の出力で `/repos/[owner]/[repo]` は動的（`ƒ`）のまま。
+  - 手動確認（`next start -p 3111`、実 API。ブラウザは使えず curl で確認）:
+    - 一覧 `/?q=react&page=2` の行リンクが `/repos/<owner>/<repo>?q=react&page=2`（AC-15e）。
+    - 詳細 `?q=react&page=2` の「トップへ戻る」が `/?q=react&page=2`（AC-15a）、クエリなしは `/`（AC-15b）、`page=abc` は `/?q=react&page=1`、`q=https://evil.example/` は `/?q=https%3A%2F%2Fevil.example%2F&page=2`（キーワードとして符号化されアプリ内のパスのまま）、257 文字の `q` は `/`（AC-15c）。
+    - `日本語 & react`（UTF-8 のパーセントエンコードで指定）の戻り先が `/?q=%E6%97%A5%E6%9C%AC%E8%AA%9E+%26+react&page=2`、その戻り先を開くと入力欄の初期値が `日本語 & react`（AC-15d）。なお Windows の curl に日本語をそのまま渡すと文字化け（U+FFFD）になるが、サーバーの挙動ではなく送信側の問題だった。
+    - 未確認: ① 一覧の行リンクがクエリ付きになったことでの先読み（prefetch）の挙動（`getRepository` が先読みで呼ばれないか。ブラウザでの実測が必要）、② ブラウザでのクリック遷移（一覧 → 詳細 → 戻る、ブラウザの戻るボタン）、③ リロード。いずれも PR で人間の確認を依頼する。
   - 対応 AC: なし（文書・検証。AC-15a〜15e の実地確認）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（3節: `features/search/` の一覧の行リンクに `q` `page` を付けること（`repoPathFromFullName` → `buildRepoPathWithSearch`）、`features/repo-detail/` の「トップへ戻る」は `backHref` を props で受け取り、`app/repos/[owner]/[repo]/page.tsx` が `searchParams` から `buildBackPath` で計算すること。5節: 「検索条件は詳細ページの URL のクエリで持ち回り、戻り先は `buildBackPath` で作り直す（受け取った文字列をそのまま `href` にしない）。404 の `トップへ戻る` は `/` 固定」「キーワードの上限 256 は `lib/search/constants.ts` と `lib/github/client.ts` に重複。一本化は Issue #20」）、本計画の進捗メモ（2 ファイル）
