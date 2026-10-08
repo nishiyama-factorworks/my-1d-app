@@ -586,3 +586,24 @@ describe("--apply: Issue の URL が取れないとき", () => {
     expect(t.out.join("\n")).toContain("更新: 成功 0 件 / 失敗 1 件");
   });
 });
+
+describe("Q6: Project の項目が取得の上限を超えるとき", () => {
+  it("全体の件数が取得できた件数より多いと、ボードにある候補が「ボードに無い」と出る可能性の警告を表示する", async () => {
+    const t = setup(["--project", "3"], {
+      itemList: JSON.stringify({
+        items: [item("i8", 8, "Backlog")],
+        totalCount: 1500,
+      }),
+    });
+    expect(await t.run()).toBe(0);
+    expect(t.out.join("\n")).toContain(
+      "警告: Project の項目の取得が上限に達しました（取得 1 件 / 全体 1500 件）",
+    );
+  });
+
+  it("全体の件数と取得できた件数が同じなら警告を表示しない", async () => {
+    const t = setup(["--project", "3"]);
+    expect(await t.run()).toBe(0);
+    expect(t.out.join("\n")).not.toContain("Project の項目の取得が上限");
+  });
+});

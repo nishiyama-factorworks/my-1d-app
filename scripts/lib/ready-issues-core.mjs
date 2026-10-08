@@ -13,7 +13,7 @@
 // 正規表現は入れ子の量指定子を使わない単純な形に保つ（ReDoS を避けるため）。
 // 括弧は入れ子を想定せず、閉じ括弧以外の連続だけを対象にする。
 const PAREN_PATTERN = /（[^）]*）|\([^)]*\)/g;
-const NUMBER_OR_RANGE_PATTERN = /(\d{4})(?:〜(\d{4}))?/g;
+const NUMBER_OR_RANGE_PATTERN = /(\d{4})(?:\s*[〜～~]\s*(\d{4}))?/g;
 
 /**
  * 4 桁の番号の範囲を、ゼロ埋め 4 桁の文字列の連続に展開する。
@@ -64,7 +64,7 @@ export function parseDependencies(specText) {
  * @returns {string | null}
  */
 export function extractSpecNumber(title) {
-  const match = /^\[[^\]]+\]\s*(\d{4})\s/.exec(title);
+  const match = /^\[[^\]]+\]\s+(\d{4})(?=\s|$)/.exec(title);
   return match === null ? null : match[1];
 }
 

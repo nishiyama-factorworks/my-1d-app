@@ -253,3 +253,19 @@ export function parseItemList(stdout) {
 export function isMissingScopes(stderr) {
   return MISSING_SCOPES.test(stderr);
 }
+
+/**
+ * items と並ぶ totalCount（全体の件数）を返す。取得できなければ null（警告に使えないだけで、例外にしない）。
+ * @param {string} stdout
+ * @returns {number | null}
+ */
+export function parseItemTotalCount(stdout) {
+  try {
+    const data = JSON.parse(stdout);
+    return isRecord(data) && typeof data.totalCount === "number"
+      ? data.totalCount
+      : null;
+  } catch {
+    return null;
+  }
+}

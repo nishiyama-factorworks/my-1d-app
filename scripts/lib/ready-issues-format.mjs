@@ -11,7 +11,7 @@
  */
 export function sanitizeForTerminal(text) {
   // Issue のタイトルは他者が書いた入力。ESC などが残ると端末に制御列として解釈されるため除去する。
-  return text.replace(/\p{Cc}/gu, "");
+  return text.replace(/[\p{Cc}\p{Cf}]/gu, "");
 }
 
 /**

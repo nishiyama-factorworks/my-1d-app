@@ -8,6 +8,7 @@ import {
   itemListArgs,
   parseFieldList,
   parseItemList,
+  parseItemTotalCount,
   parseIssueList,
   parseRepoView,
   repoViewArgs,
@@ -251,4 +252,21 @@ describe("isMissingScopes", () => {
   ])("%s", (_name, stderr, expected) => {
     expect(isMissingScopes(stderr)).toBe(expected);
   });
+});
+
+describe("parseItemTotalCount", () => {
+  it("Q6: items と並ぶ totalCount（全体の件数）を返す", () => {
+    expect(parseItemTotalCount('{"items":[],"totalCount":1500}')).toBe(1500);
+  });
+
+  it.each([
+    ["totalCount が無い", '{"items":[]}'],
+    ["totalCount が数値でない", '{"items":[],"totalCount":"3"}'],
+    ["JSON として不正", "["],
+  ])(
+    "Q6: %s のときは null を返す（警告に使えないだけで、例外にしない）",
+    (_name, stdout) => {
+      expect(parseItemTotalCount(stdout)).toBeNull();
+    },
+  );
 });

@@ -13,6 +13,10 @@ describe("sanitizeForTerminal", () => {
     expect(sanitizeForTerminal("a\u009bb")).toBe("ab");
     expect(sanitizeForTerminal("日本語🎉✓ abc")).toBe("日本語🎉✓ abc");
   });
+
+  it("AC-21: 表示を偽装できる書式制御文字（U+202E 右から左への上書き、U+200B ゼロ幅スペース）も取り除く", () => {
+    expect(sanitizeForTerminal("a‮b​c")).toBe("abc");
+  });
 });
 
 describe("formatClassification", () => {

@@ -41,6 +41,22 @@ describe("parseDependencies", () => {
       text: "- 関連: `0001-github-repo-search.md`（親仕様、8節の非機能要件）、依存: 0006〜0010\n",
       expected: ["0006", "0007", "0008", "0009", "0010"],
     },
+    // 範囲の記号の揺れ（全角チルダ・半角チルダ・前後の空白）で依存が黙って落ちると、誤って Ready 候補になる
+    {
+      name: "AC-2: 全角チルダ「0006～0010」も 5 件に展開する",
+      text: "- 関連: `0001-github-repo-search.md`（親仕様）、依存: 0006～0010\n",
+      expected: ["0006", "0007", "0008", "0009", "0010"],
+    },
+    {
+      name: "AC-2: 半角チルダ「0006~0010」も 5 件に展開する",
+      text: "- 関連: `0001-github-repo-search.md`（親仕様）、依存: 0006~0010\n",
+      expected: ["0006", "0007", "0008", "0009", "0010"],
+    },
+    {
+      name: "AC-2: 記号の前後に空白がある「0006 〜 0010」も 5 件に展開する",
+      text: "- 関連: `0001-github-repo-search.md`（親仕様）、依存: 0006 〜 0010\n",
+      expected: ["0006", "0007", "0008", "0009", "0010"],
+    },
     {
       name: "AC-3: 括弧内の文と番号を無視して 0009・0010・0003 を返す",
       text: "- 関連: `0001-github-repo-search.md`（親仕様）、依存: 0009, 0010、0003（APIの接続先の差し替えが必要になる可能性）\n",
@@ -91,6 +107,7 @@ describe("extractSpecNumber", () => {
   it.each([
     { title: "[feat] 0003 GitHub APIクライアント", expected: "0003" },
     { title: "[docs] 0012 README・AI利用レポート", expected: "0012" },
+    { title: "[feat] 0003", expected: "0003" },
   ])("AC-5: 「$title」から $expected を取り出す", ({ title, expected }) => {
     expect(extractSpecNumber(title)).toBe(expected);
   });
@@ -98,6 +115,8 @@ describe("extractSpecNumber", () => {
   it.each([
     { title: "[chore] 開発時依存 braces の既知脆弱性への追随" },
     { title: "[feat] 依存が完了した Issue を…" },
+    { title: "[feat]0003 種別と番号の間に空白が無い" },
+    { title: "[feat] 00030 5 桁の番号" },
   ])(
     "AC-6: 「$title」は種別のあとに 4 桁の番号が無いので null を返す",
     ({ title }) => {

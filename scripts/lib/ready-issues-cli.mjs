@@ -17,6 +17,7 @@ import {
   parseFieldList,
   parseIssueList,
   parseItemList,
+  parseItemTotalCount,
   parseRepoView,
   repoViewArgs,
 } from "./ready-issues-gh.mjs";
@@ -239,6 +240,7 @@ export async function runReadyIssues({ argv, runGh, readSpecFiles, out, err }) {
   if (itemStdout === null) return 1;
   const items = tryParse(() => parseItemList(itemStdout));
   if (items === null) return 1;
+  const totalCount = parseItemTotalCount(itemStdout);
 
   const plan = planProjectUpdates({
     candidates: classification.ready,
@@ -246,6 +248,12 @@ export async function runReadyIssues({ argv, runGh, readSpecFiles, out, err }) {
     repository: repo.nameWithOwner,
   });
   out("== Project の更新計画 ==");
+  // 取得した件数が全体より少ないと、ボードにある候補が「ボードに無い」と表示されうる
+  if (totalCount !== null && totalCount > items.length) {
+    out(
+      `警告: Project の項目の取得が上限に達しました（取得 ${items.length} 件 / 全体 ${totalCount} 件）。ボードにある候補が「ボードに無い」と表示される可能性があります`,
+    );
+  }
   for (const line of formatPlan(plan)) out(line);
   if (!options.apply) return 0;
 

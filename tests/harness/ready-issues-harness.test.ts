@@ -39,6 +39,13 @@ describe("ready-issues --apply の確認規則（AC-22 / hook）", () => {
     "cd scripts && node ready-issues.mjs --apply --project 3",
     "node scripts/ready-issues.mjs --project 3 \\\n  --apply",
     "node scripts/ready-issues.mjs --project 3 --apply | tee log.txt",
+    // セキュリティレビューの指摘: リダイレクトや引用符・バックスラッシュで --apply を分ける書き方
+    "node scripts/ready-issues.mjs --project 1 2>&1 --apply",
+    "node scripts/ready-issues.mjs --project 1 --apply 2>&1 | tee log.txt",
+    "node scripts/ready-issues.mjs --project 1 &>/dev/null --apply",
+    "node scripts/ready-issues.mjs --project 1 --ap''ply",
+    "node scripts/ready-issues.mjs --project 1 --app\\ly",
+    'node scripts/ready-issues.mjs --project 1 "--ap"ply',
     // 誤検知の固定（安全側。計画 Q9）
     'git commit -m "feat: ready-issues.mjs に --apply を追加"',
   ])("AC-22: 「%s」は guard-bash.sh で確認（ask）になる", (command) => {
