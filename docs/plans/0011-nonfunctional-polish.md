@@ -173,7 +173,8 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `docs/adr/0005-github-fetch-revalidate.md`（「実機確認」の節に手順・日付・観測値（残り回数の差）・ビルドの出力を追記。トークン・内部パスは書かない）、本計画の進捗メモ（2 ファイル）
   - 完了条件: 手順 4・5 の結果が記録されている。効いた場合は ADR の「未確認」を解消し、効かなかった場合は上の方針で止まっている。
 
-- [ ] **T3: ルートレイアウトのタイトルの構造と `lang`**
+- [x] **T3: ルートレイアウトのタイトルの構造と `lang`**
+  - 進捗: RED（5 件中 3 件失敗。`title` が `Create Next App`、`description` が雛形、`lang` が `en`。補強 2 件は最初から通る）→ GREEN（verify --quick PASS、717 件）。変異確認: `template` の区切り／`lang="ja-JP"`／`lang="en"`／`description` を雛形に戻す／`default` を別名にする、の 5 つすべてで検出。`description` は人間の決定（Q10）で説明文に直した（仕様 AC-28d に反映）。
   - 対応 AC: AC-26e、AC-28d
   - 先に書くテスト: `app/layout.test.tsx`（`// @vitest-environment node`。`next/font/google` は `vi.mock` で `Geist` / `Geist_Mono` が `{ variable: "font-test" }` を返す関数に差し替える（フォントの取得はプロセス境界の外。差し替えが要らないと分かれば外す）。`./globals.css` の import は Vitest が空のモジュールとして扱う）
     - `AC-28d: ルートの metadata.title は default が「GitHub リポジトリ検索」、template が「%s | GitHub リポジトリ検索」である`（`toEqual` でオブジェクト全体を完全一致。文字列はリテラル）
