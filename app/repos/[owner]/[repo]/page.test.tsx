@@ -277,6 +277,11 @@ describe("詳細ページ", () => {
         expected: "/?q=https%3A%2F%2Fevil.example%2F&page=1",
       },
       {
+        label: "q=react&q=vue（同じキーが複数）",
+        searchParams: { q: ["react", "vue"] },
+        expected: "/?q=react&page=1",
+      },
+      {
         label: "257 文字の q",
         searchParams: { q: "a".repeat(257) },
         expected: "/",
