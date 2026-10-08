@@ -775,7 +775,7 @@ paths:
 
 ```
 Issue 起票 ─▶ Ready ─▶ /feature <番号> ─▶ 仕様承認 ─▶ 計画承認 ─▶ TDD ─▶ レビュー ─▶ 検証 ─▶ Draft PR
- (Backlog)  (人間が移動)   ブランチ作成        │                                         (In progress)
+ (Backlog)  (人間が承認)   ブランチ作成        │                                         (In progress)
                           feat/12-xxx         └ Issue に仕様をコメント         CI 緑 ─▶ Ready for review ─▶ 人間がマージ
                                                                                   (In review)          ─▶ Issue 自動クローズ (Done)
 ```
@@ -845,17 +845,30 @@ Issue 起票 ─▶ Ready ─▶ /feature <番号> ─▶ 仕様承認 ─▶ �
 | 状態 | 動かす人 | きっかけ |
 | --- | --- | --- |
 | Backlog | 自動 | Issue を起票 |
-| Ready | **人間** | 要望が十分に書かれ、着手してよいと判断したとき |
+| Ready | 人間が承認（候補はスクリプトが出す） | 仕様の依存がすべて完了すると候補が出る。要望が十分に書かれ、着手してよいと判断したとき、人間が承認する |
 | In progress | 人間（または AI の確認を経て） | `/feature <番号>` でブランチを作り作業を開始 |
 | In review | 自動（任意） | Draft PR を Ready にした |
 | Done | 自動 | PR をマージして Issue が閉じた |
 
-Claude はボードの状態を自動では変更しません（`gh project item-edit` は確認が出ます）。状態の管理は人間が主導する設計です。
+ボードの状態は、Claude が勝手には変更しません。`--apply` を付けて実行したときだけ、確認のうえで Backlog から Ready への更新に限って変更します（`gh project item-edit` と同様に確認が出ます）。状態の管理は人間が主導する設計です。
+
+**Ready にできるタスクの調べ方と更新**（`scripts/ready-issues.mjs`。仕様 0014、ADR 0004）:
+
+```bash
+node scripts/ready-issues.mjs                       # 依存が完了した Issue を表示（読み取りだけ。Project は見ない）
+node scripts/ready-issues.mjs --assume-closed 12    # #12 が完了したと仮定して、着手できるタスクを表示
+node scripts/ready-issues.mjs --project 3           # Project #3 の Status を見て、更新予定（Backlog → Ready）を表示
+node scripts/ready-issues.mjs --project 3 --apply   # 上の更新予定を実際に反映する（確認が出る。仮定とは併用できない）
+```
+
+- 依存は各仕様の「関連:」行の「依存: NNNN」から読む。Issue のタイトルの仕様番号と対応づける。
+- 更新するのは Status が Backlog のものだけ。すでに Ready 以降のものは変更しない（何度実行しても同じ結果になる）。
+- Project を読み書きするには `project` スコープが必要。**人間が自分のターミナルで `gh auth refresh -s project` を実行する**（Claude は認証情報を扱わない）。
 
 ### 10.5 日々の運用
 
 1. **起票**: GitHub の画面で `feature.yml` / `bug.yml` のフォームから起票する。または `/issue create <要望>` で Claude に下書きさせる（作成前に本文の承認が必要）。
-2. **着手の判断**: 要望が十分なら人間が Ready にする。
+2. **着手の判断**: `node scripts/ready-issues.mjs` で依存が完了した候補を確認し、要望が十分なら人間が承認して Ready にする（`--apply` を使うか、画面で動かす）。
 3. **開発**: `/feature <番号>`（バグは `/fix <番号>`）。仕様承認・計画承認の 2 回だけ人間が関わる。仕様が承認されると、Issue に仕様のパスと AC 一覧がコメントされる（確認あり）。
 4. **分割**: 大きい Issue は計画承認の前に `/issue split <計画>` で子 Issue に分割できる。分割しても、TDD の工程は同じ。
 5. **PR**: `/pr`（`/feature` の最後にも実行される）が Draft PR を作る。push と作成は承認制。
@@ -908,6 +921,7 @@ AI は Issue を読んで仕様を作ります。**曖昧な Issue は、その�
 | セッション開始が遅い／Issue 情報が出ない | `gh` が未認証、ネットワーク不通、ブランチ名が規則外 | `gh auth status`。ブランチ名を `feat/<番号>-…` にする。不要なら `GITHUB_CONTEXT="off"` |
 | `setup-github.sh` が 403 / 404 を返す（ブランチ保護） | 無料プランの非公開リポジトリ、またはブランチが未作成 | 初回 push 後に再実行。公開にする・有料プランにする、または Settings > Rules で代替 |
 | プロジェクトの作成に失敗する | `project` スコープが無い | `gh auth refresh -s project` |
+| `ready-issues.mjs` が「権限が不足しています」と表示する（`missing required scopes`） | トークンに `project` スコープが無い | 人間が自分のターミナルで `gh auth refresh -s project` を実行する |
 | マージできない（必須チェックが見つからない） | 必須チェック名と、ジョブ名が不一致 | Settings > Branches で必須チェック名を `verify` / `harness-lint` に合わせる（初回は CI を一度走らせる） |
 | `pr-links` が失敗する | PR 本文に Issue 参照が無い | `Closes #N` / `Refs #N`、または `Issue: なし（理由）` を書いて保存（再実行される） |
 | `harness-doctor.sh` が `origin/main` を見つけない | まだ push していない／fetch していない | `git fetch`、または初回 push。見つからない間、Stop ゲートは HEAD を基準に動く |
@@ -921,6 +935,7 @@ AI は Issue を読んで仕様を作ります。**曖昧な Issue は、その�
 - `scripts/setup-github.sh` の `--apply`（ラベル・マージ方式・ブランチ保護・Projects 作成）。構文チェックと dry-run のみ確認済み。`gh` のバージョンによりオプション名が異なる可能性があります。
 - Issue フォーム（`feature.yml` `bug.yml`）の GitHub 上での表示、`dependabot.yml`・`pr-links.yml` の動作。
 - `/issue` `/pr` `/feature` の Issue 連携部分（`gh` 経由）の通し実行。
+- `scripts/ready-issues.mjs` の `--project` と `--apply`（実際の Project に対する読み取りと更新）。`gh project field-list` / `item-list` の出力の形（`fields` / `items`、Status のキー名）は想定に基づく。初回は `--apply` を付けずに更新予定を確認し、適用後に画面で結果を確かめる。
 
 ---
 
@@ -944,9 +959,10 @@ AI は Issue を読んで仕様を作ります。**曖昧な Issue は、その�
 | `scripts/verify.sh` | ゲート | 品質ゲートの唯一の入口 |
 | `scripts/harness-doctor.sh` | 診断 | ハーネスの健全性チェック |
 | `scripts/setup-github.sh` | 設定 | GitHub の初期設定（ラベル・マージ方式・ブランチ保護・Projects）。人間が実行 |
+| `scripts/ready-issues.mjs`、`scripts/lib/ready-issues-*.mjs` | 補助 | 依存が完了した Issue を調べ、`--apply` で Project の Status を Ready に更新する（仕様 0014） |
 | `docs/specs/_template.md` | 文書 | 仕様の雛形 |
 | `docs/plans/_template.md` | 文書 | 計画の雛形 |
-| `docs/adr/0000-template.md`, `0001-*.md`, `0002-*.md` | 文書 | ADR の雛形と、最初の 2 つの決定（ハーネス採用・GitHub での管理） |
+| `docs/adr/0000-template.md`, `0001-*.md` 〜 `0004-*.md` | 文書 | ADR の雛形と、各決定（ハーネス採用・GitHub での管理・UI 部品・Ready 候補の機械的な抽出） |
 | `docs/architecture.md` | 文書 | 全体設計 |
 | `docs/quality-gates.md` | 文書 | 完了の定義 |
 | `docs/harness/MANUAL.md` | 文書 | このマニュアル |

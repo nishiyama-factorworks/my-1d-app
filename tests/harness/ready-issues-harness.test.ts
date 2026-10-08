@@ -95,3 +95,70 @@ describe("ready-issues の settings.json の規則（AC-22）", () => {
     expect(settings.permissions.ask).not.toContain("Bash(node *)");
   });
 });
+
+/**
+ * Markdown から「startPrefix で始まる見出し行」から、次の見出し（## または ###）の直前までを切り出す。
+ * 見出しが無ければ、原因が分かるメッセージで例外にする。
+ */
+function extractSection(file: string, startPrefix: string): string {
+  const lines = readFileSync(path.join(root, file), "utf8").split(/\r?\n/);
+  const start = lines.findIndex((line) => line.startsWith(startPrefix));
+  if (start === -1) {
+    throw new Error(`${file} に「${startPrefix}」で始まる見出しが無い`);
+  }
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => /^#{2,3} /.test(line));
+  return [lines[start], ...(end === -1 ? rest : rest.slice(0, end))].join("\n");
+}
+
+describe("文書への反映（AC-23 / AC-24）", () => {
+  it("AC-23: feature.md の Step 6 に --assume-closed の実行手順があり、--apply を指示するコードが無い", () => {
+    const section = extractSection(
+      ".claude/commands/feature.md",
+      "### Step 6.",
+    );
+    expect(section).toContain("node scripts/ready-issues.mjs --assume-closed");
+    const applyLines = section
+      .split("\n")
+      .filter((line) => line.includes("node scripts/ready-issues.mjs"))
+      .filter((line) => line.includes("--apply"));
+    expect(applyLines).toEqual([]);
+  });
+
+  describe("MANUAL.md の 10.4", () => {
+    const section = () => extractSection("docs/harness/MANUAL.md", "### 10.4");
+    const readyRow = () => {
+      const row = section()
+        .split("\n")
+        .find((line) => line.startsWith("| Ready |"));
+      if (row === undefined) throw new Error("10.4 に「| Ready |」の行が無い");
+      return row;
+    };
+
+    it("AC-24: Ready の行に「候補」と「承認」が含まれる", () => {
+      expect(readyRow()).toContain("候補");
+      expect(readyRow()).toContain("承認");
+    });
+
+    it("AC-24: Ready の行の動かす人が人間だけという旧記述が残っていない", () => {
+      expect(readyRow()).not.toContain("**人間** |");
+    });
+
+    it("AC-24: ready-issues.mjs の --project と --apply の使い方がある", () => {
+      expect(section()).toContain("node scripts/ready-issues.mjs --project");
+      expect(section()).toContain("--apply");
+    });
+
+    it("AC-24: 「Claude はボードの状態を自動では変更しません」の旧記述が残っていない", () => {
+      expect(section()).not.toContain(
+        "Claude はボードの状態を自動では変更しません",
+      );
+    });
+  });
+
+  it("AC-24: 10.1 の図に「(人間が移動)」が残っていない", () => {
+    expect(extractSection("docs/harness/MANUAL.md", "### 10.1")).not.toContain(
+      "(人間が移動)",
+    );
+  });
+});

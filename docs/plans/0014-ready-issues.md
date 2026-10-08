@@ -336,7 +336,8 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `.claude/settings.json`、`.claude/hooks/guard-bash.sh`、`tests/harness/ready-issues-harness.test.ts`、`docs/harness/MANUAL.md`（4.5 の「`guard-bash.sh` の GitHub（`gh`）ルール」の表の確認の行と、10.2 のガードの行に `ready-issues.mjs --apply` を追記）（4 ファイル）
   - 完了条件: `pnpm test` PASS、`jq empty .claude/settings.json`、`bash scripts/harness-doctor.sh` に FAIL が無い、MANUAL 4.5 の手順で hook を手動実行して確認と素通りの両方を見る、`bash scripts/verify.sh --quick` PASS。hook の変更はセッションの再起動で反映されることを報告する。
 
-- [ ] **T9: `/feature` の手順・MANUAL の運用・ADR** ※ 保護ファイル 1 つ（`feature.md`）。編集時に確認が出る
+- [x] **T9: `/feature` の手順・MANUAL の運用・ADR** ※ 保護ファイル 1 つ（`feature.md`）。編集時に確認が出る
+  - 進捗: RED（27 件中 6 件失敗）→ GREEN（27 件 PASS）。`feature.md` の Step 6、MANUAL の 10.1・10.4・10.5・10.9・10.10・付録 A、ADR 0004（Status: Proposed。確認できていない点を明記）を更新。
   - 対応 AC: AC-23、AC-24
   - 先に書くテスト: `tests/harness/ready-issues-harness.test.ts` に追加
     - `AC-23: feature.md の Step 6 に node scripts/ready-issues.mjs --assume-closed の手順があり、--apply を含まない`
