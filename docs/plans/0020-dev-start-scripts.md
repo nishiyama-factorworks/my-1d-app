@@ -46,7 +46,7 @@ Status: in-progress                            <!-- draft | in-progress | done  
 
 > 分け方の考え方: コミット前に `verify.sh --quick` の PASS が必要なため、RED のままのテストはコミットしない。AC-1・AC-2 は `package.json` を変えるまで RED なので、テストと `package.json` の変更を同じコミット（T1）に入れ、RED は作業ツリー上で確認する。T2 はコードを変えない検証・レビュー。
 
-- [ ] **T1: 構成検査テストの追加と `dev` / `start` スクリプトの追加（AC-1・AC-2 の RED → GREEN、AC-3、AC-4 の確認）**
+- [x] **T1: 構成検査テストの追加と `dev` / `start` スクリプトの追加（AC-1・AC-2 の RED → GREEN、AC-3、AC-4 の確認）**
   - 対応 AC: AC-1、AC-2、AC-3、AC-4（人間の確認用の記録）
   - 先に書くテスト: `tests/foundation/package-scripts.test.ts`
     - `describe("package.json の起動スクリプト（仕様 0020）")`
@@ -146,3 +146,5 @@ Status: in-progress                            <!-- draft | in-progress | done  
 - 2026-10-09: 計画作成（draft）。未着手。人間の承認（特に Q1・Q5・Q6）を得てから T1 に入る。`/issue split` はせず 1 PR で進める想定（2 タスク）。
 
 - 2026-10-09: 人間が計画を承認（Q1〜Q9 すべて推奨どおり）。Status: in-progress。T1 から着手。
+
+- 2026-10-09: T1 完了。RED: `package.json` 未変更で AC-1・AC-2 が `expected undefined to be 'next dev' / 'next start'` で失敗、AC-3 は緑（3 件中 2 失敗）。GREEN: `dev`（先頭）と `start`（`build` の直後）を追加し、`verify.sh --quick` PASS。変異 8 件（dev/start へのオプション付与、dev/start 行の削除、dev と start の入れ替え、build・format の変更、test:e2e キーの削除）をすべて検出し、`package.json` を復元（差分は 2 行の追加のみ）。AC-4: `git diff` で `dependencies` / `devDependencies` / `packageManager` に差分なし、`pnpm-lock.yaml` も未変更（`pnpm install` は未実行）。Q6: `pnpm dev`、`pnpm build` → `pnpm start` を起動して `/` が HTTP 200、起動後の `git status` に意図しない差分なし、サーバー停止済み。
