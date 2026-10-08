@@ -115,7 +115,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: リセット時刻の整形（純粋関数）**
+- [x] **T1: リセット時刻の整形（純粋関数）**
   - 対応 AC: AC-18a（時刻の部分）
   - 先に書くテスト: `features/state-views/lib/format-time-in-tokyo.test.ts`（環境は `// @vitest-environment node` でよい。`afterEach(() => vi.unstubAllEnvs())`）
     - `AC-18a: 2026-10-08T06:42:00Z は 15:42 になる`
@@ -325,4 +325,5 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 
 - 2026-10-08: 計画作成（draft）。未着手。人間の承認（特に Q1〜Q6）を得てから T1 に入る。`/issue split` はせず 1 PR で進める想定（9 タスク）。
 - 2026-10-08: 人間が計画を承認（Q1〜Q10 はすべて推奨案で確定）。子 Issue には分割せず 1 PR で進める。Status を in-progress にし、T1 の RED から着手。
+- 2026-10-08: T1 完了。RED は仮実装（`""`）で 8/8 件が期待値の不一致（`expected '' to be …`）で失敗、GREEN は `Intl.DateTimeFormat`（`timeZone: "Asia/Tokyo"`, `hourCycle: "h23"`）で 8/8 通過、`verify.sh --quick` PASS。検出力の変異確認 (1)〜(3) は未実施。
 - 前提として読んだ申し送り: 0006 計画（0件・読み込み中・`<Suspense>` への移行）、0007 計画（範囲外の 2 段の判定を一緒に移す、0件は AC-9d の分岐の中、257 文字の `q` の 500、先読みの再確認）、0008 計画（`loading.tsx` と先読み、ストリーミング時の 404 が 200 になる点）。いずれも本計画の 1 節・T4〜T7・T9 に反映した。
