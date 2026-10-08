@@ -18,14 +18,23 @@ describe("想定外の例外の受け皿 error.tsx", () => {
     ).toBeInTheDocument();
   });
 
-  it("AC-19e: 例外が起きたときエラーの message は表示されない", () => {
-    render(
-      <ErrorPage error={new Error("internal secret detail")} retry={vi.fn()} />,
-    );
+  it("AC-19e: 例外が起きたときエラーの message と digest は表示されない", () => {
+    const error = Object.assign(new Error("internal secret detail"), {
+      digest: "123456",
+    });
+    render(<ErrorPage error={error} retry={vi.fn()} />);
+
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("internal secret detail");
+    expect(text).not.toContain("123456");
+  });
+
+  it("AC-19e（補強）: エラー表示は main ランドマークの中にある", () => {
+    render(<ErrorPage error={new Error("boom")} retry={vi.fn()} />);
 
     expect(
-      screen.queryByText(/internal secret detail/),
-    ).not.toBeInTheDocument();
+      within(screen.getByRole("main")).getByRole("alert"),
+    ).toBeInTheDocument();
   });
 
   it("AC-19e: 「再試行」を押すと retry が1回呼ばれる", async () => {

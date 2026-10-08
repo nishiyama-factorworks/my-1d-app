@@ -1,6 +1,6 @@
 # 0010: 状態表示（読み込み中・0件・エラー・404） 実装計画
 
-Status: in-progress                    <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                    <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #10
 - 対応する仕様: docs/specs/0010-state-views.md
@@ -222,7 +222,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `app/error.tsx`、`app/error.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`・`pnpm lint`・`pnpm build`（`error.tsx` が Client Component として受け付けられること）PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T9: 文書の更新と最終確認**
+- [x] **T9: 文書の更新と最終確認**
   - 対応 AC: なし（文書・検証）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（3節: `features/state-views/`（`LoadingStatus`・`ApiErrorView`・`RetryButton`・`formatTimeInTokyo`）、トップの取得は `features/search/components/search-content.tsx` の `renderSearchContent` に移り `<Suspense key>` で包む、`EmptyResults`。5節: 詳細ページのエラーの記述（「それ以外はそのまま投げる。専用の表示は 0010」）を「`GitHubApiError` は種別ごとの表示、それ以外は `app/error.tsx`」に更新、Client Component の一覧に `retry-button.tsx` と `app/error.tsx` を追加、ストリーミングのため 404・エラーが HTTP 200 になること）、本計画の進捗メモ（2 ファイル）
@@ -335,3 +335,10 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - 2026-10-08: T6 完了。RED は 10 件失敗（`GitHubApiError` がそのまま reject される。部分モックでも AC-20a は通過）。GREEN は 16/16 通過。変異確認: (1) `GitHubApiError` 以外も `ApiErrorView` → AC-20b が失敗、(2) `NOT_FOUND` 判定を除去 → AC-20a が失敗、(3) 全種別で `notFound()` → 表示系 10 件が失敗、(4) `message` を表示 → AC-19c の 4 件が失敗。いずれも元に戻し済み。
 - 2026-10-08: T7 完了。RED は 3 件失敗（`<div />` の仮実装で role=status・見出し・リンクが見つからない。角括弧のパスのテストは Vitest に拾われた）。GREEN は 3/3 通過。変異確認: リンクの href を `/x` に変更 → AC-20c のリンクのテストが失敗（元に戻し済み）。
 - 2026-10-08: T8 完了。RED は 2 件失敗（`<div />` の仮実装で role=alert と「再試行」ボタンが見つからない。message 非表示のテストは仮実装でも通る）。GREEN は 3/3 通過。変異確認: message を表示 → 「alert の中の表示」「message は表示されない」の 2 件が失敗、retry を呼ばない → 「retry が1回呼ばれる」が失敗（いずれも元に戻し済み）。`pnpm build` は T9 の最終確認で実施。
+- 2026-10-08: T9 完了。`docs/architecture.md` を更新（3節: `features/state-views/`、`search-content.tsx` と `<Suspense key>`、`empty-results.tsx`。5節: Client Component の一覧、状態表示の方針、HTTP 200 と `noindex`、詳細ページのエラー）。
+  - 手動確認（`next build` → `next start -p 3110`、実 API、curl。ブラウザは使えず）: `/?q=react` → 200、最初の HTML に `読み込み中…` があり、続けて結果（総ヒット件数）がストリームで届く（案A が本番でストリーミングされる）。`/?q=zzzxqy0010qqq` → 200、AC-17 の 2 文があり `総ヒット件数` は無い。257 文字の `q` → 200、`データの取得中にエラーが発生しました` と `再試行` があり、英語の message は無い（0007 の申し送り (a) の解消）。`/repos/vercel/next.js` → 200、`読み込み中…` の後に詳細。`/repos/vercel/this-repo-does-not-exist-0010`・`/repos/a%20b/c` → 200、`noindex` 付き。404 の表示（見出し・案内文・`トップへ戻る`（`/`））は RSC のペイロードで届き、ブラウザで描画される（HTML の本文は `読み込み中…` のまま）。`/no-such-path` → 404 で、`リポジトリが見つかりませんでした` は出ない（Q6）。
+  - 未確認（PR で人間に依頼）: ブラウザでの再検索・ページ移動時の `読み込み中…`（AC-16a 後半）、404 表示の描画、レート制限の実画面と `再試行` の動作（AC-18a・19d）、行リンク・ページ番号リンクの先読みで API の呼び出しが増えないか、`error.tsx` の実画面。
+  - レビュー: reviewer は Approve（Critical・Major なし）。security-reviewer は Critical・High・Medium なし（Low 3 件: 再試行・検索による API 利用回数の消費（既存の性質。0011 のキャッシュで扱う）、エラー表示も HTTP 200（CDN 導入時に `Cache-Control` を確認）、`ghp_` 形式のダミートークン）。
+  - レビューの Minor への対応: AC-19c のテストに、トークンの検査はページ描画の範囲に限られる旨のコメントを追加し、stack のフレーム形式（`at …:行:列`）が出ないことの検査を追加。ダミートークンを `test-token-not-a-secret-0010` に変更。`app/error.test.tsx` で `digest` も表示しないことを確かめ、`<main>` の中にあることの補強テストを追加（RED を確認後、`app/error.tsx` を `<main>` で包んで GREEN）。`api-error-view.tsx` の内部関数を `describeError` に改名。
+  - T1 の補足: 計画 1.1 は `formatToParts` で組み立てる方針だったが、`ja-JP` に `hourCycle: "h23"` と `2-digit` を指定した `.format()` は区切りが `:` に固定されるため、そのまま採用した。T1 の変異確認（`getHours()` に置き換え）を実施し、TZ=UTC・America/Los_Angeles の 2 件が失敗することを確認して元に戻した。
+  - T5 の補足: 0 件の判定を範囲外の判定より前に置いたため、範囲外の条件から `totalCount >= 1` を外した（振る舞いは同じ）。T5 の変異確認 (2) はこの形では対象が無い。

@@ -535,7 +535,9 @@ describe("トップページ: APIエラーの表示", () => {
   ] as { kind: GitHubErrorKind; status: number | undefined }[])(
     "AC-19c: GITHUB_TOKEN にダミーの値があり $kind で失敗したとき、画面のテキストにトークン・エラーの message・stack・HTTP ステータス番号が含まれない",
     async ({ kind, status }) => {
-      const token = "ghp_dummy0010TokenValue";
+      // lib/github はモックしているため、ここで確かめられるのは「ページの描画がトークンを参照しない」ことまで。
+      // トークンを API 呼び出し以外に出さない保証は 0003 の lib/github のテストが持つ。
+      const token = "test-token-not-a-secret-0010";
       vi.stubEnv("GITHUB_TOKEN", token);
       const error = new GitHubApiError(kind, { status });
       searchRepositories.mockRejectedValue(error);
@@ -548,6 +550,8 @@ describe("トップページ: APIエラーの表示", () => {
       expect(text).not.toContain(token);
       expect(text).not.toContain(error.message);
       expect(text).not.toContain(error.stack ?? "stack-unavailable");
+      // stack の一部（「at 関数名 (ファイル:行:列)」のフレーム）も出ない
+      expect(text).not.toMatch(/at .+:d+:d+/);
       if (status !== undefined) {
         expect(text).not.toContain(String(status));
       }

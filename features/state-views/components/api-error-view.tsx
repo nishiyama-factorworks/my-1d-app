@@ -8,7 +8,7 @@ type Props = {
 };
 
 // 英語の固定メッセージやステータス番号は受け取らず、種別から日本語の文言だけを決める。
-function describe({ kind, resetAt }: Props): {
+function describeError({ kind, resetAt }: Props): {
   title: string;
   detail?: string;
 } {
@@ -31,7 +31,7 @@ function describe({ kind, resetAt }: Props): {
 }
 
 export function ApiErrorView(props: Props) {
-  const { title, detail } = describe(props);
+  const { title, detail } = describeError(props);
   return (
     <div role="alert" className="py-8 text-center">
       <p>{title}</p>
