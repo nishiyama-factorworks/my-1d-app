@@ -113,7 +113,8 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `lib/search/paths.ts`、`lib/search/paths.test.ts`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: 戻り先を決める純粋関数とキーワード上限の定数**
+- [x] **T2: 戻り先を決める純粋関数とキーワード上限の定数**
+  - 進捗: RED（38 件すべて失敗。仮実装 `""`）→ GREEN（verify --quick PASS、683 件）。変異確認: 長さの判定を外す／`>` を `>=` にする／`q === null` の判定を外す／素の連結にする／`page` を補正しない、の 5 つすべてで検出。定数 `SEARCH_KEYWORD_MAX_LENGTH`（256）は `lib/search/constants.ts` に追加（`lib/github/client.ts` の内部定数との一本化は Issue #20）。
   - 対応 AC: AC-15a、AC-15b、AC-15c（全例）、AC-15d（戻り先側）
   - 先に書くテスト: `lib/search/back-path.test.ts`（`// @vitest-environment node`。入力は Next.js が復号した後の `searchParams` の形（素のオブジェクト）で書く。`%20` 等の URL 上の表記は、復号後の値（`" 3"`、`"　"`）に直して並べる）
     - `AC-15a: { q: "react", page: "3" } のとき /?q=react&page=3 を返す`
