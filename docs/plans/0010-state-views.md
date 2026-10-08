@@ -200,7 +200,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `app/repos/[owner]/[repo]/page.tsx`、`page.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T7: 詳細の読み込み中と404の表示**
+- [x] **T7: 詳細の読み込み中と404の表示**
   - 対応 AC: AC-16b、AC-20c
   - 先に書くテスト:
     - `app/repos/[owner]/[repo]/loading.test.tsx`: `AC-16b: 詳細の読み込み中は role="status" の「読み込み中…」が表示される`（`render(<Loading />)`）
@@ -333,3 +333,4 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - 2026-10-08: T5 完了。RED は 13 件失敗（0 件で総ヒット件数が残る／`GitHubApiError` が reject される）。GREEN 後、トップのエラー表示 9 件が `getByRole("alert")` の複数一致（検索フォームの常設の空 alert と `ApiErrorView`）で失敗したため、人間の承認のうえ `app/page.test.tsx` に `getErrorAlert()` を追加（期待値は不変、`search-form.tsx` は不変）。GREEN は 102/102 通過、`verify.sh --quick` PASS。変異確認: (1) 全例外を `ApiErrorView` → `GitHubApiError` 以外の reject の 1 件が失敗、(2) 0 件の分岐を外す → AC-9d・AC-17 の 2 件が失敗、(3) 0 件の分岐を `page === 1` に限定 → AC-9d の 1 件が失敗、(4) `message` を表示 → AC-19c の 4 件が失敗。いずれも元に戻し済み。
 - 前提として読んだ申し送り: 0006 計画（0件・読み込み中・`<Suspense>` への移行）、0007 計画（範囲外の 2 段の判定を一緒に移す、0件は AC-9d の分岐の中、257 文字の `q` の 500、先読みの再確認）、0008 計画（`loading.tsx` と先読み、ストリーミング時の 404 が 200 になる点）。いずれも本計画の 1 節・T4〜T7・T9 に反映した。
 - 2026-10-08: T6 完了。RED は 10 件失敗（`GitHubApiError` がそのまま reject される。部分モックでも AC-20a は通過）。GREEN は 16/16 通過。変異確認: (1) `GitHubApiError` 以外も `ApiErrorView` → AC-20b が失敗、(2) `NOT_FOUND` 判定を除去 → AC-20a が失敗、(3) 全種別で `notFound()` → 表示系 10 件が失敗、(4) `message` を表示 → AC-19c の 4 件が失敗。いずれも元に戻し済み。
+- 2026-10-08: T7 完了。RED は 3 件失敗（`<div />` の仮実装で role=status・見出し・リンクが見つからない。角括弧のパスのテストは Vitest に拾われた）。GREEN は 3/3 通過。変異確認: リンクの href を `/x` に変更 → AC-20c のリンクのテストが失敗（元に戻し済み）。
