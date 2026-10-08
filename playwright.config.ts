@@ -17,6 +17,12 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
+      // 偽の GitHub API。専用のヘルスチェックの経路は作らず（仕様 6.2 の 2 つだけ）、検索の経路で待ち合わせる。
+      command: "node --experimental-strip-types e2e/mock-api/server.ts",
+      url: `http://127.0.0.1:${MOCK_PORT}/search/repositories?q=react`,
+      reuseExistingServer: false,
+    },
+    {
       // 前回の fetch キャッシュ（ADR 0005）が残ると、モックの変更が反映されない。起動前に消す。
       // ビルドを含むため、待ち時間を長めにする。
       command: `node -e "require('node:fs').rmSync('.next/cache/fetch-cache',{recursive:true,force:true})" && pnpm build && pnpm start -p ${APP_PORT}`,

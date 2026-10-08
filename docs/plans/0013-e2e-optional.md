@@ -180,7 +180,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - AC-31g の検出力の確認: `exclude` から `e2e/**` を外す → AC-31g が失敗する。`exclude` を `configDefaults.exclude` を含まない形（`["e2e/**"]` だけ）にしても `node_modules` 配下が一覧に出ないかを確認し、出るなら `configDefaults.exclude` の展開を残す理由をコメントに書く。
   - 完了条件: `bash scripts/verify.sh --quick` PASS（E2E は含まない）。`pnpm test:e2e` は**RED のまま**で、その結果（2 件失敗と理由）を進捗メモに記録する。コミットは `test(e2e): …` とし、本文に「E2E は T4 で GREEN にする」と書く。実行後に `git status` で `AGENTS.md`・`next-env.d.ts` などに差分が無いことを確認する。
 
-- [ ] **T4: モックサーバー（GREEN）**（`feat(e2e)`）
+- [x] **T4: モックサーバー（GREEN）**（`feat(e2e)`）
   - 対応 AC: AC-31a、AC-31b
   - 先に書くテスト: なし（T3 のシナリオが RED のまま。シナリオは変更しない）
   - 実装対象（2 ファイル）: `e2e/mock-api/server.ts`（新規。1.3 の契約どおり）、`playwright.config.ts`（モックの webServer を配列の先頭に足す）
@@ -299,3 +299,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: T2 完了。RED: 16 件失敗・26 件成功（AC-31c の 3 件、AC-31d の 11 件、AC-23e 維持の `https://api.github.com/x` の 1 件、AC-31e の 1 件。いずれも未実装による期待値の不一致）。AC-31f の 2 件と既存 24 件は緑。GREEN: `resolveBaseOrigin` を切り出し、`githubGet` が呼び出しごとに `GITHUB_API_BASE_URL` を読む。上書き中は `Authorization` を付けない。`verify.sh --quick` PASS。変異 14 件を入れて、最初は 2 件（ユーザー名だけ・パスワードだけの検査を外す変異 2d・2e）を見逃した。原因はテストの認証情報の行が `user:pass@` の 1 行だけで、2 つの検査が互いを隠していたこと。`http://user@…` と `http://:pass@…` の 2 行をテストに足し、14 件すべて検出・復元を確認。`http.test.ts` の既存行の削除 0 件（134 行の追加）。
 
 - 2026-10-09: T3 完了。AC-31g の RED: 除外前の `vitest run` で `tests/foundation/vitest-excludes-e2e.test.ts` の「含まれない」が `expected ['e2e/search-empty.spec.ts', …(1)] to deeply equal []` で失敗し、Vitest が `e2e/*.spec.ts` を拾って Playwright の `test.beforeEach() ... async test.describe()` のエラーでも失敗した。GREEN: `vitest.config.mts` に `exclude: [...configDefaults.exclude, "e2e/**"]`（`configDefaults.exclude` を外すと `node_modules` 配下の 869 ファイルが対象に入ることを確認し、理由をコメントに記載）。`pnpm vitest run` 47 ファイル・934 件 PASS、`verify.sh --quick` PASS。E2E の RED（`pnpm test:e2e`）: 2 件失敗（AC-31a は `getByText('総ヒット件数: 45 件')` が見つからない、AC-31b は 0 件の案内が見つからない）。アプリ（`pnpm build` → `pnpm start -p 3100`）とブラウザは起動しており、画面は「GitHub に接続できませんでした」（`NETWORK`）。モック（4010）が無く、接続先の上書きが効いた結果で、実 API には接続していない（存在しないキーワードなら実 API は 0 件で通るはずのため）。実行後、サーバー停止済み、`git status` に `AGENTS.md`・`next-env.d.ts` の差分なし（`test-results/` は gitignore）。E2E は T4 で GREEN にする。
+
+- 2026-10-09: T4 完了。`e2e/mock-api/server.ts`（`node:http`、127.0.0.1:4010、固定データ 45 件、`search/repositories` と `repos/{owner}/{repo}` のみ、それ以外は 404）と、`playwright.config.ts` のモックの webServer を追加。GREEN: `pnpm test:e2e` が 2 件 PASS（2 回連続。2 回目はキャッシュを消して起動するため結果が変わらない）。実行後、3100・4010 のサーバーは停止済み、`AGENTS.md`・`next-env.d.ts` に差分なし。E2E の変異 7 件をすべて検出し、復元を確認（1: 戻り先から page を落とす、2: 戻り先を常に /、3: 行リンクから検索条件を落とす、4: 入力欄の初期値を使わない、5: Star と Watcher の入れ替え、6: 0 件の案内の文言変更、7: モックが page を無視。いずれも 1 件失敗）。変異の実行中は、バックグラウンドの変異が入った状態でテストが走ったため、停止フックが一度失敗を返した（変異が戻った後は全 PASS）。復元後に `verify.sh --quick` PASS・`pnpm test:e2e` 2 件 PASS を再確認。
