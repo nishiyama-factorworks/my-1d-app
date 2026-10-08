@@ -254,7 +254,8 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `app/page.test.tsx`、`search-form.test.tsx`、`api-error-view.test.tsx`、`app/error.test.tsx`（4 ファイル。テストのみ）
   - 完了条件: `pnpm test`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。変異の結果を進捗メモに記録。
 
-- [ ] **T8: フォーカス表示を消す指定の静的検査、ラベル、代替テキスト**
+- [x] **T8: フォーカス表示を消す指定の静的検査、ラベル、代替テキスト**
+  - 進捗: テストのみ（追加 12 件。検出器以外は書いた時点で全件が通った。想定どおり）。検出器は、判定を「常に false」に差し替えて「検出する」側 4 件が失敗することを確かめてから、本来の正規表現に戻した。変異で検出力を確認: 入力欄に `focus:outline-none`（失敗メッセージに `search-form.tsx:48` と行が出る）／`app/globals.css` に `:focus { outline: 0 }`（`globals.css:28`）／`label` の `htmlFor` を外す（AC-26a）／一覧の `alt=""`／詳細の `alt=""`（AC-26c2）の 5 つすべてで検出。全件の変異を元に戻したことを確認。
   - 対応 AC: AC-26b2（静的検査）、AC-26a、AC-26c2
   - 先に書くテスト:
     - `tests/a11y/focus-outline.test.ts`（1.2 (e)）

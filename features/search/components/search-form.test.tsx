@@ -212,3 +212,13 @@ describe("SearchForm: キーボード操作（0011）", () => {
     },
   );
 });
+
+describe("SearchForm: ラベル（0011）", () => {
+  it("AC-26a: getByLabelText(キーワード) で取得した要素は、ロール searchbox・名前「キーワード」の要素と同じである", () => {
+    render(<SearchForm initialQuery="" />);
+
+    expect(screen.getByLabelText("キーワード")).toBe(
+      screen.getByRole("searchbox", { name: "キーワード" }),
+    );
+  });
+});
