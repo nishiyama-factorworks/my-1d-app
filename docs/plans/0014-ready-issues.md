@@ -256,7 +256,9 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `scripts/lib/ready-issues-format.mjs`、`scripts/lib/ready-issues-format.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: Status フィールドの検証と Project の更新計画**
+- [x] **T4: Status フィールドの検証と Project の更新計画**
+  - 進捗: RED（テスト 21 件中 20 件が失敗）→ GREEN（verify --quick PASS、431 件）。変異確認: 「Backlog 以外も update」「repository の照合を外す」「content.type の照合を外す」の 3 つで、いずれもテストが 2 件失敗することを確認し、元に戻した。
+  - 申し送り: `displayTitle` の正規表現が format.mjs と project.mjs の 2 か所にある。T6 で共通化するか判断する。`gh project` の実際の JSON 形は T5 でも未確認のまま（`project` スコープが必要）。
   - 対応 AC: AC-14、AC-15、AC-16（計画の部分）、AC-19（フィールド・選択肢の部分）
   - 先に書くテスト: `scripts/lib/ready-issues-project.test.ts`
     - `AC-19: Status フィールドが無いとき、存在したフィールド名の一覧を含む理由を返す`

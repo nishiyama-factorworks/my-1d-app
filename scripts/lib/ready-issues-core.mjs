@@ -2,7 +2,7 @@
 
 /**
  * @typedef {{ name: string; text: string }} SpecFile
- * @typedef {{ number: number; title: string; state: "OPEN" | "CLOSED" }} IssueSummary
+ * @typedef {{ number: number; title: string; state: "OPEN" | "CLOSED"; url?: string }} IssueSummary
  * @typedef {{ specNumber: string; issueNumbers: number[] }} Duplicate
  * @typedef {{ issue: IssueSummary; specNumber: string; dependencies: string[]; assumed: number[] }} ReadyEntry
  * @typedef {{ specNumber: string; reason: "open" | "no-issue" | "duplicate"; issueNumber?: number }} Blocker
