@@ -271,7 +271,9 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `scripts/lib/ready-issues-project.mjs`、`scripts/lib/ready-issues-project.test.ts`（2 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: `gh` の境界（引数・出力の検証・権限不足の検知）**
+- [x] **T5: `gh` の境界（引数・出力の検証・権限不足の検知）**
+  - 進捗: RED（35 件中 32 件失敗）→ GREEN（verify --quick PASS、466 件）。変異確認: Issue の state・nameWithOwner の形式検査・Status の値・大文字小文字の無視・item-list の上限の 5 つで検出。「options が配列でない」の分岐の除去は、後続の `.map` が例外になるため動作が変わらない等価な変異で未検出（問題なし）。`parseProjectView` はフロー（g）で使わないため作らなかった。
+  - 着手前の確認（2026-10-08、gh 2.102.0）: `issue list`（`--state`・`--json`・`--limit`、JSON フィールドに number/title/state/url）、`repo view`（`--json nameWithOwner`）、`project field-list`（`--owner`・`--format json`・`--limit` 既定 30）、`project item-list`（`--owner`・`--format json`・`--limit` 既定 30）、`project item-edit`（名前で指定する形）はいずれも 1.2 (f) の想定と一致。`--help` では JSON の出力形（`fields` / `items` の形、Status のキー名）は分からないため未確認のまま。`field-list` は既定 30 件までだが、フィールド数は通常それより少ないので `--limit` は付けない。
   - 対応 AC: AC-18（検知の部分）、AC-13〜16 の前提（引数の形）
   - 着手前: 1.2 (f) の `--help` を確認し（`gh project item-edit --help` と `gh project field-list --help` は確認が出る。人間に承認してもらう）、表と本計画の進捗メモを更新する。想定と違えば人間に報告してから進める。
   - 先に書くテスト: `scripts/lib/ready-issues-gh.test.ts`
