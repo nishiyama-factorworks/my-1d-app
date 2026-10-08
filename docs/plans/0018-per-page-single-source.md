@@ -1,6 +1,6 @@
 # 0018: `lib/github` の既定値 30 と上限 256 を `lib/search/constants.ts` に一本化する 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                     <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #20
 - 対応する仕様: docs/specs/0018-per-page-single-source.md
@@ -100,7 +100,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
       - `it.each`（陽性）: `AC-5（検出器）: lib/search/x.ts の $specifier は lib/github を指すと判定する`（`@/lib/github`、`@/lib/github/types`、`../github`、`../github/errors`、`../../lib/github`、`./../github/client`。`import`・`import type`・`export … from`・`import("…")`・`require("…")` の各構文）
       - `it.each`（陰性）: `AC-5（検出器）: lib/search/x.ts の $specifier は lib/github を指さないと判定する`（`./constants`、`@/lib/search/query`、`@/lib/github-extra`（前方一致の誤判定の防止）、`../githubx`、`react`）
     - `describe("AC-5: lib/search は lib/github に依存しない")`
-      - `AC-5: lib/search/ のテストを除くソースは、@/lib/github・../github・../../github のいずれも import していない`（違反があれば `ファイル: 指定子` の一覧をメッセージに出す）
+      - `AC-5: lib/search/ のテストを除くソースは、@/lib/github・../github・../../lib/github のいずれも import していない`（違反があれば `ファイル: 指定子` の一覧をメッセージに出す）
   - RED の方法: このタスクのテストは現状のコードで**通るのが正しい**（AC-5 は既に満たされ、検出器はテストと同時に書く）。代わりに、検出器を空の配列を返す仮実装で先に書いて実行し、陽性テストと前提テストが期待値の不一致で失敗することを確認してから本実装に置き換える（import エラー・構文エラーでの失敗は RED と認めない）。
   - 実装対象: `tests/foundation/search-constants-single-source.test.ts`（1 ファイル）
   - 検出力の確認（GREEN 後に一時的に変異を入れて戻す）:
@@ -132,7 +132,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
     6. `@/lib/search/constants` の import を `import "server-only";` より前に移す → `server-only.test.ts` の先頭の文の検査が失敗（AC-4 の検査が効いていることの確認）。
   - 完了条件: 構成検査テストを含む全テストが通り、既存テストの期待値の変更が 0 件。`pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: 文書の更新と最終確認**
+- [x] **T3: 文書の更新と最終確認**
   - 対応 AC: なし（文書・検証。AC-1〜AC-5 の総合確認）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md` 5 節の 55 行目（「キーワードの上限 256 は `lib/search/constants.ts`（`SEARCH_KEYWORD_MAX_LENGTH`）と `lib/github/client.ts`（内部の `MAX_Q_LENGTH`）に重複している。一本化は Issue #20（0018）」）を、「1 ページの件数 30（`SEARCH_PER_PAGE`）とキーワードの上限 256（`SEARCH_KEYWORD_MAX_LENGTH`）は `lib/search/constants.ts` だけで定義し、`lib/github/client.ts` が import する（0018）。依存の向きは `lib/github/` → `lib/search/` のみで、`lib/search/` は `lib/github/` を import しない（クライアントで使うため）。`tests/foundation/search-constants-single-source.test.ts` で検査する。`MAX_PER_PAGE`（100）などの GitHub API 固有の制約は `lib/github/` に置く」の趣旨に置き換える。本計画の進捗メモ（2 ファイル）
@@ -207,3 +207,4 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - `@/lib/search/constants` をモックしているテストは無い。`@/lib/github` をファクトリで差し替えているテストは 4 つ（1.2 (e)）。
 
 - 2026-10-08: 人間が計画を承認（Q1〜Q7 すべて推奨どおり）。Status: in-progress。T1 から着手。
+- 2026-10-08: T1〜T3 完了、レビュー済み。reviewer は Approve（Critical・Major なし）、security-reviewer（server-only の境界に絞った点検）は Critical・High・Medium なし（Low 1 件・Info 1 件、修正不要）。reviewer の Minor に対応: (#1) 検出器が `.tsx` を `ScriptKind.TSX` で解析する（JSX を含む断片の陽性テストを追加）、(#2) 型の位置の `import("…")`（`ImportTypeNode`）も指定子として集める、(#3) 仕様 AC-5 とテスト名の例示 `../../github` を `../../lib/github` に直した（仕様の変更履歴に理由を記載。実装の検出器は最初から正しかった）、(#4) `lib/search/constants.ts` に依存の向きの理由と `SEARCH_PER_PAGE` の使われ方のコメントを追加、(#5) `findDeclaredNames` が分割代入の束縛・`enum`・`import X = require`・`export { X as Y }` も拾う。拾わない形（型エイリアス・`interface`・`namespace` の名前、別名なしの再 export、オブジェクトのプロパティ名）は関数のコメントに限界として明記した。Nit: `3e1`・`3_0` の陽性テストを追加。`bash scripts/verify.sh`（full）は PASS（テスト 805 件超、ビルドで `lib/github/` から `@/lib/search/constants` の解決を確認）。

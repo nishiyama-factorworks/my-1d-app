@@ -30,13 +30,15 @@ function listSourceFiles(dir: string): string[] {
 
 // ---- 検出器（ソース文字列を AST で読む純粋関数） ----
 
-function parse(source: string): ts.SourceFile {
+/** 拡張子が .tsx のときだけ TSX として解析する（JSX の中の `'` や `<` を正しく読むため） */
+function parse(source: string, fileName = "fragment.ts"): ts.SourceFile {
+  const kind = fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   return ts.createSourceFile(
-    "fragment.ts",
+    fileName,
     source,
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TS,
+    kind,
   );
 }
 
@@ -45,25 +47,40 @@ function walk(node: ts.Node, visit: (n: ts.Node) => void): void {
   ts.forEachChild(node, (child) => walk(child, visit));
 }
 
-/** 指定した名前の宣言（変数・関数・クラス・import の束縛名・パラメータ）を返す */
-function findDeclaredNames(source: string, names: string[]): string[] {
+/**
+ * 指定した名前の宣言を返す。拾う形: 変数・分割代入の束縛・関数・クラス・enum・
+ * パラメータ・import の束縛名（import X = require(…) を含む）・`export { A as X }` の X。
+ * 限界（拾わない形）: 型エイリアス・interface・namespace の名前、
+ * `export { X } from "…"` の再 export（別名なし）、オブジェクトリテラルのプロパティ名。
+ */
+function findDeclaredNames(
+  source: string,
+  names: string[],
+  fileName?: string,
+): string[] {
   const found: string[] = [];
   const add = (id: ts.Node | undefined): void => {
     if (id && ts.isIdentifier(id) && names.includes(id.text)) {
       found.push(id.text);
     }
   };
-  walk(parse(source), (node) => {
+  walk(parse(source, fileName), (node) => {
     if (
       ts.isVariableDeclaration(node) ||
+      ts.isBindingElement(node) ||
       ts.isFunctionDeclaration(node) ||
       ts.isClassDeclaration(node) ||
-      ts.isParameter(node)
+      ts.isEnumDeclaration(node) ||
+      ts.isParameter(node) ||
+      ts.isImportEqualsDeclaration(node)
     ) {
       add(node.name);
     } else if (ts.isImportSpecifier(node) || ts.isNamespaceImport(node)) {
       add(node.name);
     } else if (ts.isImportClause(node)) {
+      add(node.name);
+    } else if (ts.isExportSpecifier(node) && node.propertyName) {
+      // 別名なしの `export { X }` は X の宣言が別にあるので数えない
       add(node.name);
     }
   });
@@ -77,9 +94,9 @@ type NamedImport = {
 };
 
 /** 名前付き import を、指定子・型だけか・各 specifier の元の名前と別名つきで返す */
-function findNamedImports(source: string): NamedImport[] {
+function findNamedImports(source: string, fileName?: string): NamedImport[] {
   const result: NamedImport[] = [];
-  walk(parse(source), (node) => {
+  walk(parse(source, fileName), (node) => {
     if (!ts.isImportDeclaration(node)) return;
     if (!ts.isStringLiteral(node.moduleSpecifier)) return;
     const bindings = node.importClause?.namedBindings;
@@ -100,8 +117,12 @@ function findNamedImports(source: string): NamedImport[] {
 type NumericHit = { value: number; text: string; line: number };
 
 /** 値が values のどれかに一致する数値リテラルを返す（30.0 や 0x1E も値で比べる） */
-function findNumericLiterals(source: string, values: number[]): NumericHit[] {
-  const sourceFile = parse(source);
+function findNumericLiterals(
+  source: string,
+  values: number[],
+  fileName?: string,
+): NumericHit[] {
+  const sourceFile = parse(source, fileName);
   const hits: NumericHit[] = [];
   walk(sourceFile, (node) => {
     if (!ts.isNumericLiteral(node)) return;
@@ -115,11 +136,17 @@ function findNumericLiterals(source: string, values: number[]): NumericHit[] {
   return hits;
 }
 
-/** import / export … from / import("…") / require("…") のモジュール指定子を返す */
-function findModuleSpecifiers(source: string): string[] {
+/** import / export … from / import("…") / require("…") / 型の位置の import("…") の指定子を返す */
+function findModuleSpecifiers(source: string, fileName?: string): string[] {
   const specifiers: string[] = [];
-  walk(parse(source), (node) => {
+  walk(parse(source, fileName), (node) => {
     if (
+      ts.isImportTypeNode(node) &&
+      ts.isLiteralTypeNode(node.argument) &&
+      ts.isStringLiteral(node.argument.literal)
+    ) {
+      specifiers.push(node.argument.literal.text);
+    } else if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
       node.moduleSpecifier &&
       ts.isStringLiteral(node.moduleSpecifier)
@@ -255,12 +282,23 @@ describe("検出器", () => {
     },
     { label: "30.0", source: "const x = 30.0;", value: 30 },
     { label: "0x1E", source: "const x = 0x1E;", value: 30 },
-  ])("AC-2（検出器）: $label の数値リテラルを検出する", ({ source, value }) => {
-    const hits = findNumericLiterals(source, [30, 256]);
+    { label: "3e1", source: "const x = 3e1;", value: 30 },
+    { label: "3_0", source: "const x = 3_0;", value: 30 },
+    {
+      label: "JSX を含む .tsx の {30}",
+      source: `const el = <a href="x">it's {30}</a>;`,
+      value: 30,
+      fileName: "fragment.tsx",
+    },
+  ])(
+    "AC-2（検出器）: $label の数値リテラルを検出する",
+    ({ source, value, fileName }) => {
+      const hits = findNumericLiterals(source, [30, 256], fileName);
 
-    expect(hits).toHaveLength(1);
-    expect(hits[0]?.value).toBe(value);
-  });
+      expect(hits).toHaveLength(1);
+      expect(hits[0]?.value).toBe(value);
+    },
+  );
 
   it.each([
     { label: "DEFAULT_PAGE = 1", source: "const DEFAULT_PAGE = 1;" },
@@ -287,6 +325,75 @@ describe("検出器", () => {
     { name: "動的 import", build: (s) => `const m = import("${s}");` },
     { name: "require", build: (s) => `const m = require("${s}");` },
   ];
+
+  it("AC-5（検出器）: .tsx の断片で JSX と import が同居していても import を検出する", () => {
+    const source = [
+      `export const el = <a href="x">it's</a>;`,
+      'import { X } from "@/lib/github";',
+    ].join("\n");
+
+    expect(findModuleSpecifiers(source, "fragment.tsx")).toEqual([
+      "@/lib/github",
+    ]);
+  });
+
+  it.each([
+    { specifier: "@/lib/github", expected: true },
+    { specifier: "../github/errors", expected: true },
+    { specifier: "./constants", expected: false },
+    { specifier: "@/lib/github-extra", expected: false },
+  ])(
+    'AC-5（検出器）: 型の位置の import("$specifier") も指定子として集める',
+    ({ specifier, expected }) => {
+      const source = `type X = import("${specifier}").RepoSummary;`;
+
+      const found = findModuleSpecifiers(source);
+
+      expect(found).toEqual([specifier]);
+      expect(pointsToLibGithub("lib/search/x.ts", specifier)).toBe(expected);
+    },
+  );
+
+  it.each([
+    {
+      label: "分割代入の別名 const { a: N } = x",
+      source: "const { a: DEFAULT_PER_PAGE } = x;",
+    },
+    {
+      label: "分割代入の省略形 const { N } = x",
+      source: "const { DEFAULT_PER_PAGE } = x;",
+    },
+    {
+      label: "配列の分割代入 const [N] = x",
+      source: "const [DEFAULT_PER_PAGE] = x;",
+    },
+    { label: "enum N", source: "enum DEFAULT_PER_PAGE { A }" },
+    {
+      label: "import N = require(...)",
+      source: 'import DEFAULT_PER_PAGE = require("./a");',
+    },
+    {
+      label: "export { X as N }",
+      source: "export { X as DEFAULT_PER_PAGE };",
+    },
+  ])("AC-1（検出器）: $label も宣言として検出する", ({ source }) => {
+    expect(findDeclaredNames(source, ["DEFAULT_PER_PAGE"])).toEqual([
+      "DEFAULT_PER_PAGE",
+    ]);
+  });
+
+  it("AC-1（検出器）: .tsx の断片でも宣言を検出し、コメント・文字列中の同名は検出しない", () => {
+    const source = [
+      "// const { a: DEFAULT_PER_PAGE } = x;",
+      'const s = "enum DEFAULT_PER_PAGE";',
+      `const el = <a href="x">it's {DEFAULT_PER_PAGE}</a>;`,
+      "const DEFAULT_PER_PAGE = 30;",
+    ].join("\n");
+
+    expect(
+      findDeclaredNames(source, ["DEFAULT_PER_PAGE"], "fragment.tsx"),
+    ).toEqual(["DEFAULT_PER_PAGE"]);
+  });
 
   it.each([
     { specifier: "@/lib/github" },
@@ -331,9 +438,9 @@ describe("検出器", () => {
 });
 
 describe("AC-5: lib/search は lib/github に依存しない", () => {
-  it("AC-5: lib/search/ のテストを除くソースは、@/lib/github・../github・../../github のいずれも import していない", () => {
+  it("AC-5: lib/search/ のテストを除くソースは、@/lib/github・../github・../../lib/github のいずれも import していない", () => {
     const violations = listSourceFiles("lib/search").flatMap((file) =>
-      findModuleSpecifiers(readFileSync(path.join(root, file), "utf-8"))
+      findModuleSpecifiers(readFileSync(path.join(root, file), "utf-8"), file)
         .filter((specifier) => pointsToLibGithub(file, specifier))
         .map((specifier) => `${file}: ${specifier}`),
     );
@@ -387,6 +494,7 @@ describe("AC-2: lib/github に 30 と 256 の数値リテラルが無い", () =>
       findNumericLiterals(
         readFileSync(path.join(root, file), "utf-8"),
         [30, 256],
+        file,
       ).map((hit) => `${file}:${hit.line}: ${hit.text}`),
     );
 

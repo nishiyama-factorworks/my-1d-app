@@ -1,7 +1,7 @@
 export type SearchRepositoriesParams = {
   q: string;
   page?: number; // 既定 1
-  perPage?: number; // 既定は SEARCH_PER_PAGE
+  perPage?: number; // 既定は SEARCH_PER_PAGE（lib/search/constants.ts）
 };
 
 export type RepoSummary = {

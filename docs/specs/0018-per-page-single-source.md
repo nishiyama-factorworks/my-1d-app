@@ -46,7 +46,7 @@
 | AC-2 | `lib/github/` のテストを除く `.ts` のソース | 数値リテラルを調べる | 1 ページの件数 `30` とキーワードの上限 `256` の数値リテラルが無い（コメントは対象外。`100`（`MAX_PER_PAGE` と `REPO_PATTERN` の長さ）は GitHub 固有の制約なので対象外） |
 | AC-3 | 既存のテストを実行する | `pnpm test` を実行する | `lib/github/client.test.ts` の `per_page` の既定値 30、`q` が 256 文字で成功・257 文字で `VALIDATION`、`perPage` の境界（1〜100）を含め、既存のテストが期待値を変えずに全件通る |
 | AC-4 | `lib/github` を未モックで読む | `lib/github/server-only.test.ts` を実行する | 拒否される検査が引き続き通る |
-| AC-5 | `lib/search/` のテストを除くソース | import を調べる | `lib/github/` を import していない（`@/lib/github`、`../github`、`../../github` のいずれも無い） |
+| AC-5 | `lib/search/` のテストを除くソース | import を調べる | `lib/github/` を import していない（`@/lib/github`、`../github`、`../../lib/github` のいずれも無い） |
 
 ## 6. 画面・API の契約
 
@@ -71,3 +71,4 @@
 | --- | --- | --- |
 | 2026-10-08 | 下書きを作成（仕様番号 0018 を付与） | Ready の判定の対象にするため（Issue #25） |
 | 2026-10-08 | 範囲を件数 30 に加えて上限 256（`MAX_Q_LENGTH` → `SEARCH_KEYWORD_MAX_LENGTH`）まで広げ、Non-goals の「`MAX_Q_LENGTH` の移動」を外した。AC を具体化し（AC-1 に `MAX_Q_LENGTH`、AC-2 リテラルの検査、AC-5 依存の向きの検査）、構成検査テストの追加を 4.1 に追記。Non-goals に、GitHub API 固有の制約（`MAX_PER_PAGE` など）は移さないことを明記 | `/feature 20` の仕様確認で、0009 により 256 が既に二重になっていることと、挙動が変わらないため既存のテストだけでは RED を作れないことが分かり、人間が決定 |
+| 2026-10-08 | AC-5 の例示 `../../github` を `../../lib/github` に直した | `lib/search/x.ts` から見て `../../github` は `<root>/github` を指し `lib/github` ではない。レビューで指摘（実装の検出器は `../../lib/github` を正しく陽性にしていた） |
