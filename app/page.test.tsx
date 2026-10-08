@@ -1,6 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, it, expect, vi } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
+import { startTransition } from "react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { GitHubApiError } from "@/lib/github/errors";
+import type { GitHubErrorKind } from "@/lib/github/types";
 import type {
   SearchRepositoriesParams,
   SearchRepositoriesResult,
@@ -9,10 +12,13 @@ import Page from "./page";
 
 // SearchForm が useRouter を呼ぶ。App Router のコンテキストが無いと例外になるため、
 // プロセス境界の外（履歴更新・RSC 取得）にあたる useRouter だけを差し替える。
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const { push, refresh } = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, refresh }),
 }));
 
 // 検索 API（ネットワーク境界）だけを差し替える。ファクトリで丸ごと置き換えるので
@@ -28,21 +34,43 @@ vi.mock("@/lib/github", () => ({ searchRepositories }));
 
 beforeEach(() => {
   push.mockReset();
+  refresh.mockReset();
   searchRepositories.mockReset();
   searchRepositories.mockResolvedValue({ totalCount: 0, items: [] });
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 // async な Server Component は JSX としては描画できないため、
 // ページ関数を直接呼んで await し、返った要素を描画する。
-async function renderPage(
-  searchParams: Record<string, string | string[] | undefined>,
-) {
-  render(
-    await Page({
-      params: Promise.resolve({}),
-      searchParams: Promise.resolve(searchParams),
-    }),
-  );
+// 取得は <Suspense> の中で行われるので、act の中で描画して解決を待つ。
+type TestSearchParams = Record<string, string | string[] | undefined>;
+
+function callPage(searchParams: TestSearchParams) {
+  return Page({
+    params: Promise.resolve({}),
+    searchParams: Promise.resolve(searchParams),
+  });
+}
+
+async function renderPage(searchParams: TestSearchParams) {
+  let result!: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(await callPage(searchParams));
+  });
+  return result;
+}
+
+// 検索フォームには入力案内用の role="alert"（空）が常にあるため、
+// フォームの外にあるエラー表示の alert がちょうど 1 つあることを確かめて取り出す
+function getErrorAlert() {
+  const alerts = screen
+    .getAllByRole("alert")
+    .filter((el) => el.closest("form") === null);
+  expect(alerts).toHaveLength(1);
+  return alerts[0];
 }
 
 describe("トップページ", () => {
@@ -148,16 +176,93 @@ describe("トップページ", () => {
     },
   );
 
-  it("AC-4a（仕様6.1）: 検索 API が GitHubApiError で失敗したとき、握りつぶさずにそのまま投げる", async () => {
-    const error = new GitHubApiError("RATE_LIMIT");
-    searchRepositories.mockRejectedValue(error);
+  it('AC-16a: /?q=react で取得中のとき、検索フォームは表示されたまま、role="status" の「読み込み中…」が表示される', async () => {
+    searchRepositories.mockReturnValue(new Promise(() => {}));
 
-    await expect(
-      Page({
-        params: Promise.resolve({}),
-        searchParams: Promise.resolve({ q: "react" }),
-      }),
-    ).rejects.toBe(error);
+    await renderPage({ q: "react" });
+
+    expect(
+      screen.getByRole("searchbox", { name: "キーワード" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("読み込み中…");
+    expect(screen.queryByText(/総ヒット件数/)).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("AC-16a: 読み込み中の表示は検索フォームより後ろ（一覧の位置）にある", async () => {
+    searchRepositories.mockReturnValue(new Promise(() => {}));
+
+    await renderPage({ q: "react" });
+
+    const form = screen.getByRole("searchbox", { name: "キーワード" });
+    expect(
+      form.compareDocumentPosition(screen.getByRole("status")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("AC-16a: 取得が終わると読み込み中の表示が消え、結果に置き換わる", async () => {
+    searchRepositories.mockResolvedValue({
+      totalCount: 12345,
+      items: [
+        {
+          fullName: "vercel/next.js",
+          ownerLogin: "vercel",
+          ownerAvatarUrl:
+            "https://avatars.githubusercontent.com/u/14985020?v=4",
+        },
+      ],
+    });
+
+    await renderPage({ q: "react" });
+
+    expect(
+      await screen.findByText("総ヒット件数: 12,345 件"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it.each([
+    {
+      label: "q（react → vue）",
+      first: { q: "react" },
+      second: { q: "vue" },
+    },
+    {
+      label: "page（1 → 2）",
+      first: { q: "react", page: "1" },
+      second: { q: "react", page: "2" },
+    },
+  ])(
+    "AC-16a: 表示済みの状態から $label が変わる遷移（トランジション）でも読み込み中が表示される",
+    async ({ first, second }) => {
+      searchRepositories.mockResolvedValueOnce({
+        totalCount: 12345,
+        items: [],
+      });
+      const { rerender } = await renderPage(first);
+      expect(
+        await screen.findByText("総ヒット件数: 12,345 件"),
+      ).toBeInTheDocument();
+
+      searchRepositories.mockReturnValue(new Promise(() => {}));
+      const next = await callPage(second);
+      // 同期の act では、未解決の Promise を use で読んだときの中断がフラッシュされず、
+      // fallback を観測できないため、async の act で待つ
+      await act(async () => {
+        startTransition(() => {
+          rerender(next);
+        });
+      });
+
+      expect(screen.getByRole("status")).toHaveTextContent("読み込み中…");
+    },
+  );
+
+  it("AC-16a（補強）: q が無いときは読み込み中を表示しない", async () => {
+    await renderPage({});
+
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 
@@ -317,16 +422,150 @@ describe("トップページ: ページネーションと範囲外ページ", ()
     ).toHaveAttribute("aria-current", "page");
   });
 
-  it("AC-9d: /?q=react&page=2・総件数0のとき、範囲外の案内を出さず0件と空の一覧を表示する", async () => {
+  // 仕様変更 0010（10節）: 0007 AC-9d の「総ヒット件数: 0 件」と空の一覧の表示を、
+  // AC-17 の案内文に置き換えた。範囲外の案内なし・行なし・ページネーションなしは変えない。
+  it("AC-9d・AC-17: /?q=react&page=2・総件数0のとき、範囲外の案内を出さず0件の案内を表示する", async () => {
     searchRepositories.mockResolvedValue({ totalCount: 0, items: [] });
 
     await renderPage({ q: "react", page: "2" });
 
     expect(screen.queryByText("指定されたページは存在しません")).toBeNull();
-    expect(screen.getByText("総ヒット件数: 0 件")).toBeInTheDocument();
+    expect(screen.queryByText(/総ヒット件数/)).toBeNull();
+    expect(
+      screen.getByText("「react」に一致するリポジトリは見つかりませんでした。"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("別のキーワードで検索してください。"),
+    ).toBeInTheDocument();
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
     expect(
       screen.queryByRole("navigation", { name: "ページネーション" }),
     ).toBeNull();
+  });
+});
+
+describe("トップページ: 0件の表示", () => {
+  it("AC-17: キーワード zzzxqy の検索で総件数0のとき、2つの案内文が表示され、総ヒット件数・一覧の行・ページネーションは表示されない", async () => {
+    searchRepositories.mockResolvedValue({ totalCount: 0, items: [] });
+
+    await renderPage({ q: "zzzxqy" });
+
+    expect(
+      screen.getByText(
+        "「zzzxqy」に一致するリポジトリは見つかりませんでした。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("別のキーワードで検索してください。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/総ヒット件数/)).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+    expect(
+      screen.queryByRole("navigation", { name: "ページネーション" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("searchbox", { name: "キーワード" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("トップページ: APIエラーの表示", () => {
+  it.each([
+    {
+      label: "AC-18a: RATE_LIMIT・resetAt あり",
+      error: () =>
+        new GitHubApiError("RATE_LIMIT", {
+          status: 403,
+          resetAt: new Date("2026-10-08T06:42:00Z"),
+        }),
+      texts: [
+        "GitHub API の利用制限に達しました",
+        "15:42（日本時間）に解除されます。",
+      ],
+    },
+    {
+      label: "AC-18b: RATE_LIMIT・resetAt なし",
+      error: () => new GitHubApiError("RATE_LIMIT", { status: 403 }),
+      texts: [
+        "GitHub API の利用制限に達しました",
+        "しばらく時間をおいてから再試行してください。",
+      ],
+    },
+    {
+      label: "AC-19a: UPSTREAM",
+      error: () => new GitHubApiError("UPSTREAM", { status: 502 }),
+      texts: ["データの取得中にエラーが発生しました"],
+    },
+    {
+      label: "AC-19a: VALIDATION",
+      error: () => new GitHubApiError("VALIDATION", { status: 422 }),
+      texts: ["データの取得中にエラーが発生しました"],
+    },
+    {
+      label: "AC-19b: NETWORK",
+      error: () => new GitHubApiError("NETWORK"),
+      texts: [
+        "GitHub に接続できませんでした",
+        "通信環境を確認してから再試行してください。",
+      ],
+    },
+  ])(
+    "$label のとき、role=alert の中に仕様6.1の文言と「再試行」ボタンがあり、検索フォームが残る",
+    async ({ error, texts }) => {
+      searchRepositories.mockRejectedValue(error());
+
+      await renderPage({ q: "react" });
+
+      const alert = within(getErrorAlert());
+      for (const text of texts) {
+        expect(alert.getByText(text)).toBeInTheDocument();
+      }
+      expect(alert.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("searchbox", { name: "キーワード" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it.each([
+    { kind: "RATE_LIMIT", status: 403 },
+    { kind: "VALIDATION", status: 422 },
+    { kind: "UPSTREAM", status: 502 },
+    { kind: "NETWORK", status: undefined },
+  ] as { kind: GitHubErrorKind; status: number | undefined }[])(
+    "AC-19c: GITHUB_TOKEN にダミーの値があり $kind で失敗したとき、画面のテキストにトークン・エラーの message・stack・HTTP ステータス番号が含まれない",
+    async ({ kind, status }) => {
+      // lib/github はモックしているため、ここで確かめられるのは「ページの描画がトークンを参照しない」ことまで。
+      // トークンを API 呼び出し以外に出さない保証は 0003 の lib/github のテストが持つ。
+      const token = "test-token-not-a-secret-0010";
+      vi.stubEnv("GITHUB_TOKEN", token);
+      const error = new GitHubApiError(kind, { status });
+      searchRepositories.mockRejectedValue(error);
+
+      await renderPage({ q: "react" });
+
+      // エラー表示が出ていること（何も描画されずに通るのを防ぐ）
+      expect(getErrorAlert()).toBeInTheDocument();
+      const text = document.body.textContent ?? "";
+      expect(text).not.toContain(token);
+      expect(text).not.toContain(error.message);
+      expect(text).not.toContain(error.stack ?? "stack-unavailable");
+      // stack の一部（「at 関数名 (ファイル:行:列)」のフレーム）も出ない
+      expect(text).not.toMatch(/at .+:d+:d+/);
+      if (status !== undefined) {
+        expect(text).not.toContain(String(status));
+      }
+    },
+  );
+
+  it("AC-19d: エラー表示の「再試行」を押すと router.refresh() が1回呼ばれ、push は呼ばれない", async () => {
+    const user = userEvent.setup();
+    searchRepositories.mockRejectedValue(new GitHubApiError("UPSTREAM"));
+    await renderPage({ q: "react" });
+
+    await user.click(screen.getByRole("button", { name: "再試行" }));
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
   });
 });
