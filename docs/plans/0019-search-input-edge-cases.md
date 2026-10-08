@@ -46,7 +46,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 > 分け方の考え方: コミット前に `verify.sh --quick` の PASS が必要なため、RED のままのテストはコミットしない。テスト追加と実装を T1 の 1 コミットにまとめ、T2 で全体の検証とレビューを行う。
 
-- [ ] **T1: `normalizeKeyword` がゼロ幅文字と空白だけの入力を空と判定する（AC-1〜AC-5）**
+- [x] **T1: `normalizeKeyword` がゼロ幅文字と空白だけの入力を空と判定する（AC-1〜AC-5）**
   - 対応 AC: AC-1、AC-2、AC-3、AC-4、AC-5（0004 の AC-25m）
   - 先に書くテスト: `lib/search/query.test.ts`（既存の書き方に合わせる。`// @vitest-environment node`、`describe` は既存の `normalizeKeyword` / `parseSearchParams` の中に足す、`it.each` の `{ label, input }` 形式でテスト名に `$label` と `AC-<番号>` を含める）
     - `describe("normalizeKeyword")` に追加
@@ -138,3 +138,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - リポジトリ内のコードにゼロ幅文字・`\u200B` を扱う既存実装は無い（`scripts/` 配下のテスト名に記述があるのみ）。
 
 - 2026-10-09: 人間が計画を承認（Q1〜Q6 すべて推奨どおり）。Status: in-progress。T1 から着手。
+
+- 2026-10-09: T1 完了。RED: 9 件失敗（AC-1 の 4 件、AC-2 の 4 件、AC-4 の 1 件。いずれも `expected '<ゼロ幅文字>' to be null` の期待値の不一致）、AC-3 の 3 件と既存テストは緑（45 件中 36 件成功）。GREEN: `normalizeKeyword` が「4 文字を除く → trim → 空なら null、そうでなければ元の入力を trim して返す」。`verify.sh --quick` PASS。変異 8 件（trim だけに戻す、文字クラスから U+200B・U+200C・U+200D・U+2060 を 1 つずつ外す 4 件、除いた値を返す、再 trim なし、trim せず元の入力を返す）をすべて検出し、`query.ts` を復元。変異 5（範囲を広げても落ちない）は計画どおり検出対象外で、範囲はコードレビューで確認する。`query.test.ts` は既存行の変更 0 件（43 行の追加のみ）。ソース・テストの生のゼロ幅文字は 0 件（node で全文を走査。Grep ツールはパターンを正しく扱えず誤ヒットするため根拠にしない）。
