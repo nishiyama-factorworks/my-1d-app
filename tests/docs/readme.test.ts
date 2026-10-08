@@ -6,6 +6,9 @@
 // - 相対パスの「未作成」除外は行単位。「未作成」と書いた行にある `components/` 配下のパスだけを除く
 //   （同じ行の他のパスは検査する）。
 // - 文章の妥当性は検査しない（レビューで確認する）。
+// - `pnpm <名前>` の検出は、前が日本語などの文字（空白・記号以外）だと拾わない（`次にpnpm biuld` はすり抜ける）。
+//   README のコマンドはバッククォートかフェンスの中に書く前提。
+// - 相対パスの検査は、Markdown のリンクとバッククォート内だけが対象。地の文に書いたパスは検査しない。
 import {
   mkdirSync,
   mkdtempSync,
@@ -176,7 +179,7 @@ function findPnpmCommands(md: string): PnpmCommand[] {
 // ---- 純粋関数の下請け ----
 
 function splitLines(md: string): string[] {
-  return md.replace(/^﻿/, "").split(/\r?\n/);
+  return md.replace(/^\uFEFF/, "").split(/\r?\n/);
 }
 
 /** フェンス（``` / ~~~）の外の行だけを返す */
@@ -291,7 +294,7 @@ describe("extractHeadings", () => {
   });
 
   it("AC-30a〜AC-30d（見出し判定）: CRLF・先頭の BOM・末尾の空白でも見出しの文字だけを返す", () => {
-    const md = "﻿# t\r\n## a \r\n### b\t\r\n";
+    const md = "\uFEFF# t\r\n## a \r\n### b\t\r\n";
 
     expect(extractHeadings(md)).toEqual([
       { level: 2, text: "a" },

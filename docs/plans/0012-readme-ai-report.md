@@ -1,6 +1,6 @@
 # 0012: README・AI利用レポート 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #12
 - 対応する仕様: docs/specs/0012-readme-ai-report.md
@@ -179,7 +179,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象（3 ファイル）: `README.md`、`tests/docs/readme.test.ts`、本計画（進捗メモ）
   - 完了条件: すべてのテストが通る。`bash scripts/verify.sh --quick` PASS。不可視文字の Grep が 0 件。AI利用レポートの事実ごとに根拠の所在が調査の記録にある。README にコミットの作者名・メールアドレス・ローカルの絶対パスが無いこと（`Users` `@` などで Grep して目視）を確認する。
 
-- [ ] **T4: 新規クローンでの手動実行（AC-30e）、全体の検証とレビュー**（コードの変更なし。進捗メモのみ。レビューの指摘で README を直す場合は `docs(readme)` の追加コミット）
+- [x] **T4: 新規クローンでの手動実行（AC-30e）、全体の検証とレビュー**（コードの変更なし。進捗メモのみ。レビューの指摘で README を直す場合は `docs(readme)` の追加コミット）
   - 対応 AC: AC-30e（あわせて AC-30a〜AC-30d・AC-30f・AC-30g の総合確認）
   - 先に書くテスト: なし
   - AC-30e の手順（T1〜T3 をコミットした後に行う。作業ツリーの未コミットの変更は含まれない）:
@@ -289,9 +289,13 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
     4. 範囲と制約: 親仕様 0001 の 8 節（セキュリティ・信頼性・アクセシビリティ・パフォーマンス・見やすさ・メタデータ・品質ゲート・テスト方針）と 9 節の後送り事項（アプリのタイトルは `lib/app-config.ts` の `APP_NAME` という仮の定数、対応ブラウザ・ダークモードは未決のまま）。既知の制約は 1,000 件上限とレート制限（認証なしの検索 API は 1 分 10 回、コア API は 1 時間 60 回。ADR 0005 の記述）。
     5. AI 利用の事実（2026-10-09 に確認）: `git log --oneline` は 24 件、マージ済み PR は 18 件（`gh pr list --state merged`）、`docs/specs/`（`_template.md`・`_assignment.md` を除く）は 20 本、ADR は 6 本（`0000-template.md` を除く 0001〜0006）、コミット本文の `Co-Authored-By` に現れるモデル名は Claude Opus 5.5 と Claude Sonnet 5.5（表記は大文字小文字のゆれあり）。`.claude/` は agents 5（implementer・planner・reviewer・security-reviewer・test-writer）、commands 11、skills 3。`scripts/verify.sh` が全品質ゲート。
     6. 人間が判断・修正した点（確認できたもの）: 仕様 0012 の言語・形式・テスト方針と、`components/` 未作成による AC-30b・AC-30f の修正（本 PR）。仕様 0019（Issue #21）でサロゲートは届かないと調査して対応しない、ゼロ幅スペースは対応すると人間が判断（PR #37）。仕様 0013 で接続先の上書きをループバック限定・上書き中はトークンを送らない設計にし、依存追加（Playwright）を人間が承認して実行（PR #38）。計画 0016 の T1 で保護ファイルを確認画面を経ずに一時書き換えた手順の逸脱を、reviewer が Major として指摘し、PR 本文で開示（PR #34）。
-    7. AI の出力で注意した点（確認できたもの）: 計画 0013 の T2 で変異が認証情報の検査 2 件を見逃し、テストの行を足して全件検出（PR #38）。計画 0020 のレビューで AC-3 が計画の `it.each` 6 件でなく 1 つの `it` だった食い違いを Major として直した（PR #36）。ツールの書き込みでゼロ幅文字が生の文字に展開された問題をエスケープ表記に直し、node で全文走査して 0 件を確認（PR #37）。仕様・計画に書かれた事実は一次情報で確認し、未確認は未確認と書く（`CLAUDE.md` 5 節）。
+    7. AI の出力で注意した点（確認できたもの）: 計画 0013 の T2 で変異が認証情報の検査 2 件を見逃し、テストの行を足して全件検出（PR #38）。計画 0020 のレビューで AC-3 が計画の `it.each` 6 件でなく 1 つの `it` だった食い違いを Major として直した（PR #36）。計画に直書きされたゼロ幅文字をエスケープ表記に直し、node で全文走査して 0 件を確認（PR #37）。仕様・計画に書かれた事実は一次情報で確認し、未確認は未確認と書く（`CLAUDE.md` 5 節）。
     - 個人情報: コミットの作者名・メールアドレス・ローカルの絶対パスは記録していない。
 
 - 2026-10-09: T2 完了。RED: 41 件中 7 件失敗（AC-30a の概要・コマンド・GITHUB_TOKEN・pnpm と scripts の一致、AC-30b のルーティング・ディレクトリ構成・工夫した点。いずれも見出しだけの README に対する期待値の不一致）、34 件成功。GREEN: README の概要・セットアップ・構成と判断を書いた。最初に `セットアップ` の下に `###` を 4 つ足して見出しの完全一致のテストが失敗したため、太字のラベルに直した（仕様 4.1 は `セットアップ` の下に `###` を置かない）。41 件すべて PASS、`verify.sh --quick` PASS、不可視文字 0 件。変異 16 件（T1 の分に加え、`subscribers_count`・`未設定`・`任意`・スクリプト名の誤記・`pnpm start` の誤記・`components/` の行の `未作成`・詳細ページのパス・`300 秒`・`bash scripts/verify.sh` を消す）をすべて検出、陰性 2 件は通過、README を復元。事実の確認: 接続先の固定には E2E 専用の例外（ADR 0006）があるため、その旨を README に加えた。
 
 - 2026-10-09: T3 完了。RED: 60 件中 14 件失敗（AC-30c の想定の範囲 8 件・対応しなかった事項・既知の制約、AC-30d の使ったツール・進め方・番号つき具体例 2 件。いずれも見出しだけの後半に対する期待値の不一致）、46 件成功（運営上の項目が無いことの陰性は最初から緑）。GREEN: 範囲と制約・AI利用レポートを書いた。60 件すべて PASS、`verify.sh --quick` PASS、不可視文字 0 件。変異 30 件（見出し・リンク・トークン・`GITHUB_TOKEN=` の値・スクリプト名・`未作成`・300 秒、想定の範囲の 8 項目、`ダークモード`・`仮の定数`・`対応ブラウザ`・`レート制限`・`1,000 件`、運営上の項目の混入、`Claude Code`・`仕様駆動`・`scripts/verify.sh`、番号つき具体例の削除）をすべて検出、陰性 2 件は通過、README を復元。1 件の見逃し: 想定の範囲の「アクセシビリティ」のラベルだけを変えても、同じ節の別の文に語が残るため通る。項目ごと削除した場合（4 項目で確認）は検出する。キーワードを節単位で見る設計（Q5）による既知の限界。事実の確認: ダークモードは `app/globals.css` に雛形由来の `prefers-color-scheme: dark` があり背景色と文字色だけを切り替えるため、「設計も確認もしていない」と事実どおりに書いた。件数は「この README を含む PR を除いて」と明記。README に作者名・メールアドレス・絶対パスは無い（`Users` `@` で Grep）。
+
+- 2026-10-09: T4 の途中。AC-30e: 新規クローン（ローカルのリポジトリからブランチを指定してクローン。`.env*` は `.env.example` の 1 件のみ）で README の手順を順に実行し、すべて成功した。`pnpm install`（exit 0）、`pnpm dev` で `/` が HTTP 200、`pnpm build`（exit 0）、`pnpm start` で `/` が HTTP 200、`pnpm test`（48 ファイル・994 件 PASS）、`pnpm exec playwright install chromium`（exit 0）、`pnpm test:e2e`（2 件 PASS）、`bash scripts/verify.sh`（typecheck・lint・test・build すべて PASS）。実際の GitHub API は呼んでいない（`/` のみ）。`reviewer`: Request changes（Critical なし、Major 3 件）。Major 1: テストのソースに生の U+FEFF が 2 か所あった（T2・T3 の記録「不可視文字 0 件」はテストについては誤りで、README についてのみ正しかった）。エスケープ表記（U+FEFF の文字コード）に直した。Major 2: README の反映の遅れの最大値が ADR 0005（stale-while-revalidate で再検証時間より長くなる）と食い違っていたので書き直した。Major 3: ゼロ幅文字の問題の原因（ツールの書き込みでの展開）が記録で確認できないため、確認できる範囲の記述に直した（この計画の調査の記録 7 も訂正）。Minor/Nit も反映: 仕様 0020 の項を事実の範囲に、レート制限の共有をトークンの有無によらないと明記し数値の出典を補足、`watchers_count` の断定を親仕様 0001 に記載のある検索 API に絞った、1,000 件の表示は 1,000 件超のときだけと明記、状態表示をトップと詳細に分けた、`reviewer` と `security-reviewer` の運用を実態に合わせた、`h1` / `main` の記述と「CI と同じ」を正確に、テスト先頭の限界のコメントに 2 点追記。`security-reviewer`: Critical・High・Medium なし。Low 2 件を反映（トークン権限の具体的な手順を README に追記、E2E の上書きは本番・開発では設定しない旨を追記）。参考情報: コミットの作者メールアドレスは通常の Git の作者情報として公開される（人間の判断事項）。
+
+- 2026-10-09: T4 完了。レビュー指摘の反映後、`bash scripts/verify.sh`（full）: typecheck / lint / test / build すべて PASS。変異を再実行して前回と同じ結果（30 件が期待どおり、既知の限界 1 件）。README・テスト・計画の不可視文字は 0 件（node で全文を走査）。AC-30e の実行結果は PR 本文に記載。Status: done。
