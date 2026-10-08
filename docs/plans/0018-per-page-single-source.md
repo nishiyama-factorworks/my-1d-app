@@ -85,7 +85,8 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 > 分け方の考え方: コミット前に `verify.sh --quick` が PASS している必要があるため、RED のままのテストはコミットしない。最初から緑になる部分（検出器・前提・AC-5）を T1 で入れ、RED になる AC-1・AC-2 の実ファイルへの適用は T2 で実装と同じコミットに入れる。T1 → T2 → T3 の順。T2 は T1 の検出器に依存する。
 
-- [ ] **T1: 構成検査テストの土台（検出器・走査の前提）と依存の向き（AC-5）**
+- [x] **T1: 構成検査テストの土台（検出器・走査の前提）と依存の向き（AC-5）**
+  - 進捗: 検出器と走査を「空配列／false を返す」仮実装にして 31 件中 20 件が失敗することを確認（RED の代わり。陰性 10 件と AC-5 本体は自明に通る）→ 本実装で 31 件すべて PASS。変異確認: `lib/search/format.ts` に `@/lib/github/types` の import を足す／相対の `../github/errors` を足す（どちらも AC-5 が失敗し、メッセージに `lib/search/format.ts: …` が出る）、走査の拡張子を `.jsx?` にする（前提 2 件が失敗）、相対指定子の解決を外す（相対の陽性 4 件が失敗）、前方一致にする（`@/lib/github-extra` の陰性が失敗）の 5 つすべてで検出。本番コードの差分が残っていないことを確認。
   - 対応 AC: AC-5（あわせて AC-1・AC-2 の検出器の正しさ）
   - 先に書くテスト: `tests/foundation/search-constants-single-source.test.ts`
     - `describe("走査の前提")`
