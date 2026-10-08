@@ -110,7 +110,8 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
     4. `pointsToLibGithub` の相対指定子の解決を外す → 相対の陽性テストが失敗。前方一致（`startsWith("@/lib/github")`）にする → `@/lib/github-extra` の陰性テストが失敗。
   - 完了条件: 新しいテストがすべて通り、既存テストは変更なしで通る。`pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T2: `client.ts` の定数を `lib/search/constants.ts` に一本化（AC-1・AC-2 の RED → GREEN）**
+- [x] **T2: `client.ts` の定数を `lib/search/constants.ts` に一本化（AC-1・AC-2 の RED → GREEN）**
+  - 進捗: RED（34 件中 3 件失敗。AC-1 の 2 件が `client.ts: DEFAULT_PER_PAGE`・`MAX_Q_LENGTH` の宣言と import の不足、AC-2 が `client.ts:13: 30`・`client.ts:19: 256`）→ GREEN（verify --quick PASS、805 件）。既存のテストファイルの変更は 0 件（`git diff --stat` で確認。`client.test.ts`・`server-only.test.ts`・`pagination.test.ts`・`back-path.test.ts` は変更なしで通る）。変異確認: `DEFAULT_PER_PAGE` を戻す／`perPage = 30` に戻す／相対 import／別名 import／`http.ts` に `256` を足す／`SEARCH_PER_PAGE` を 31 にする／上限を 255 にする／import を `server-only` より前に移す、の 8 つすべてで検出。
   - 対応 AC: AC-1、AC-2、AC-3、AC-4
   - 先に書くテスト: T1 のファイルに追加
     - `describe("AC-1: client.ts は一本化した定数を使う")`

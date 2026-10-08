@@ -341,3 +341,55 @@ describe("AC-5: lib/search は lib/github に依存しない", () => {
     expect(violations).toEqual([]);
   });
 });
+
+describe("AC-1: client.ts は一本化した定数を使う", () => {
+  const clientSource = readFileSync(
+    path.join(root, "lib/github/client.ts"),
+    "utf-8",
+  );
+
+  it("AC-1: lib/github/client.ts に DEFAULT_PER_PAGE と MAX_Q_LENGTH という名前の宣言が無い", () => {
+    expect(parse(clientSource).statements.length).toBeGreaterThan(0);
+
+    const declared = findDeclaredNames(clientSource, [
+      "DEFAULT_PER_PAGE",
+      "MAX_Q_LENGTH",
+    ]);
+
+    expect(declared.map((name) => `lib/github/client.ts: ${name}`)).toEqual([]);
+  });
+
+  it("AC-1: lib/github/client.ts は SEARCH_PER_PAGE と SEARCH_KEYWORD_MAX_LENGTH を @/lib/search/constants から（別名・型だけの import でなく）import している", () => {
+    const imports = findNamedImports(clientSource).filter(
+      (decl) => decl.specifier === "@/lib/search/constants" && !decl.typeOnly,
+    );
+    const missing = ["SEARCH_PER_PAGE", "SEARCH_KEYWORD_MAX_LENGTH"].filter(
+      (name) =>
+        !imports.some((decl) =>
+          decl.names.some(
+            (n) => n.imported === name && n.local === name && !n.typeOnly,
+          ),
+        ),
+    );
+
+    expect(
+      missing.map(
+        (name) =>
+          `lib/github/client.ts: @/lib/search/constants から ${name} を import していない`,
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("AC-2: lib/github に 30 と 256 の数値リテラルが無い", () => {
+  it("AC-2: lib/github/ のテストを除くソースに数値リテラル 30 と 256 が無い", () => {
+    const violations = listSourceFiles("lib/github").flatMap((file) =>
+      findNumericLiterals(
+        readFileSync(path.join(root, file), "utf-8"),
+        [30, 256],
+      ).map((hit) => `${file}:${hit.line}: ${hit.text}`),
+    );
+
+    expect(violations).toEqual([]);
+  });
+});

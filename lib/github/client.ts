@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  SEARCH_KEYWORD_MAX_LENGTH,
+  SEARCH_PER_PAGE,
+} from "@/lib/search/constants";
+
 import { GitHubApiError } from "./errors";
 import { githubGet } from "./http";
 import { mapRepositoryResponse, mapSearchResponse } from "./mappers";
@@ -10,22 +15,19 @@ import type {
 } from "./types";
 
 const DEFAULT_PAGE = 1;
-const DEFAULT_PER_PAGE = 30;
 
 const OWNER_PATTERN = /^[A-Za-z0-9-]{1,39}$/;
 const REPO_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
 const MAX_PER_PAGE = 100;
-// GitHub のドキュメントが定める検索クエリの上限文字数に合わせる
-const MAX_Q_LENGTH = 256;
 
 export async function searchRepositories({
   q,
   page = DEFAULT_PAGE,
-  perPage = DEFAULT_PER_PAGE,
+  perPage = SEARCH_PER_PAGE,
 }: SearchRepositoriesParams): Promise<SearchRepositoriesResult> {
   if (
     q.trim() === "" ||
-    q.length > MAX_Q_LENGTH ||
+    q.length > SEARCH_KEYWORD_MAX_LENGTH ||
     !Number.isInteger(page) ||
     page < 1 ||
     !Number.isInteger(perPage) ||
