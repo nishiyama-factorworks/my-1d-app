@@ -211,7 +211,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `app/repos/[owner]/[repo]/loading.tsx`、`loading.test.tsx`、`not-found.tsx`、`not-found.test.tsx`（4 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T8: 想定外の例外の受け皿（`app/error.tsx`）**
+- [x] **T8: 想定外の例外の受け皿（`app/error.tsx`）**
   - 対応 AC: AC-19e
   - 先に書くテスト: `app/error.test.tsx`（`render(<RouteError error={Object.assign(new Error("internal detail 0010"), { digest: "123456" })} retry={retry} />)`）
     - `AC-19e: role="alert" の中に「予期しないエラーが発生しました」と「再試行」ボタンが表示される`
@@ -334,3 +334,4 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - 前提として読んだ申し送り: 0006 計画（0件・読み込み中・`<Suspense>` への移行）、0007 計画（範囲外の 2 段の判定を一緒に移す、0件は AC-9d の分岐の中、257 文字の `q` の 500、先読みの再確認）、0008 計画（`loading.tsx` と先読み、ストリーミング時の 404 が 200 になる点）。いずれも本計画の 1 節・T4〜T7・T9 に反映した。
 - 2026-10-08: T6 完了。RED は 10 件失敗（`GitHubApiError` がそのまま reject される。部分モックでも AC-20a は通過）。GREEN は 16/16 通過。変異確認: (1) `GitHubApiError` 以外も `ApiErrorView` → AC-20b が失敗、(2) `NOT_FOUND` 判定を除去 → AC-20a が失敗、(3) 全種別で `notFound()` → 表示系 10 件が失敗、(4) `message` を表示 → AC-19c の 4 件が失敗。いずれも元に戻し済み。
 - 2026-10-08: T7 完了。RED は 3 件失敗（`<div />` の仮実装で role=status・見出し・リンクが見つからない。角括弧のパスのテストは Vitest に拾われた）。GREEN は 3/3 通過。変異確認: リンクの href を `/x` に変更 → AC-20c のリンクのテストが失敗（元に戻し済み）。
+- 2026-10-08: T8 完了。RED は 2 件失敗（`<div />` の仮実装で role=alert と「再試行」ボタンが見つからない。message 非表示のテストは仮実装でも通る）。GREEN は 3/3 通過。変異確認: message を表示 → 「alert の中の表示」「message は表示されない」の 2 件が失敗、retry を呼ばない → 「retry が1回呼ばれる」が失敗（いずれも元に戻し済み）。`pnpm build` は T9 の最終確認で実施。
