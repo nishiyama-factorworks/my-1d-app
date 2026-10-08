@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApiErrorView } from "@/features/state-views/components/api-error-view";
 import { RepoDetailView } from "@/features/repo-detail/components/repo-detail-view";
@@ -5,6 +6,14 @@ import { getRepository } from "@/lib/github";
 import { isGitHubApiError } from "@/lib/github/errors";
 import type { RepoDetail } from "@/lib/github/types";
 import { buildBackPath } from "@/lib/search/back-path";
+
+// 追加の API 呼び出しを避けるため、タイトルは URL の params から作る。
+export async function generateMetadata({
+  params,
+}: PageProps<"/repos/[owner]/[repo]">): Promise<Metadata> {
+  const { owner, repo } = await params;
+  return { title: `${owner}/${repo}` };
+}
 
 export default async function RepoDetailPage({
   params,
@@ -27,6 +36,9 @@ export default async function RepoDetailPage({
     }
     return (
       <main className="flex flex-1 flex-col items-center gap-6 p-8">
+        <h1 className="text-2xl font-semibold">
+          リポジトリを表示できませんでした
+        </h1>
         <ApiErrorView kind={e.kind} resetAt={e.resetAt} />
       </main>
     );

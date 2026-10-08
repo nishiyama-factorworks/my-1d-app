@@ -5,6 +5,14 @@ import { classifyHttpError, GitHubApiError } from "./errors";
 const BASE_URL = "https://api.github.com";
 const TIMEOUT_MS = 10_000;
 
+type Endpoint = "search" | "repo";
+
+// レート制限と鮮度の釣り合い。根拠は ADR 0005。
+const REVALIDATE_SECONDS = { search: 300, repo: 600 } as const satisfies Record<
+  Endpoint,
+  number
+>;
+
 function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
@@ -19,7 +27,7 @@ function buildHeaders(): Record<string, string> {
 }
 
 export async function githubGet(
-  endpoint: "search" | "repo",
+  endpoint: Endpoint,
   path: string,
   query?: Record<string, string>,
 ): Promise<unknown> {
@@ -40,6 +48,7 @@ export async function githubGet(
       res = await fetch(url.toString(), {
         headers: buildHeaders(),
         signal: controller.signal,
+        next: { revalidate: REVALIDATE_SECONDS[endpoint] },
       });
     } catch {
       // 元の例外メッセージには URL 等が含まれ得るため、意図的に引き継がない。

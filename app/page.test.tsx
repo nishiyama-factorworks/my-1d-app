@@ -8,7 +8,7 @@ import type {
   SearchRepositoriesParams,
   SearchRepositoriesResult,
 } from "@/lib/github/types";
-import Page from "./page";
+import Page, { generateMetadata } from "./page";
 
 // SearchForm が useRouter を呼ぶ。App Router のコンテキストが無いと例外になるため、
 // プロセス境界の外（履歴更新・RSC 取得）にあたる useRouter だけを差し替える。
@@ -619,5 +619,173 @@ describe("トップページ: 詳細への行リンク（0009）", () => {
     expect(new URL(href, "http://localhost").searchParams.get("q")).toBe(
       "日本語 & react",
     );
+  });
+});
+
+describe("トップページ: タイトル（0011）", () => {
+  function callMetadata(searchParams: TestSearchParams) {
+    return generateMetadata({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve(searchParams),
+    });
+  }
+
+  it("AC-28a: q が無いとき、タイトルはアプリ名だけ（absolute）になる", async () => {
+    expect(await callMetadata({})).toEqual({
+      title: { absolute: "GitHub リポジトリ検索" },
+    });
+  });
+
+  it.each([
+    { label: "q が空", searchParams: { q: "" } },
+    { label: "q が空白のみ", searchParams: { q: "   " } },
+    { label: "q が全角空白のみ", searchParams: { q: "　" } },
+    { label: "page=2 のみ（q なし）", searchParams: { page: "2" } },
+  ])(
+    "AC-28a: $label のとき、タイトルはアプリ名だけになる",
+    async ({ searchParams }) => {
+      expect(await callMetadata(searchParams)).toEqual({
+        title: { absolute: "GitHub リポジトリ検索" },
+      });
+    },
+  );
+
+  it("AC-28b: q=react のとき、タイトルは「react の検索結果 | GitHub リポジトリ検索」になる", async () => {
+    expect(await callMetadata({ q: "react" })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28b: q の前後の空白は除かれる", async () => {
+    expect(await callMetadata({ q: " react " })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28b（補強）: page はタイトルに入らない", async () => {
+    expect(await callMetadata({ q: "react", page: "3" })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28b（補強）: q が複数あるときは先頭の値を使う", async () => {
+    expect(await callMetadata({ q: ["react", "vue"] })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28a・28b（補強）: タイトルの生成は検索 API を呼ばない", async () => {
+    await callMetadata({});
+    await callMetadata({ q: "react" });
+
+    expect(searchRepositories).not.toHaveBeenCalled();
+  });
+});
+
+describe("トップページ: キーボード操作（0011）", () => {
+  const rows = [
+    { fullName: "vercel/next.js", ownerLogin: "vercel" },
+    { fullName: "facebook/react", ownerLogin: "facebook" },
+    { fullName: "vuejs/core", ownerLogin: "vuejs" },
+  ].map((row) => ({
+    ...row,
+    ownerAvatarUrl: "https://avatars.githubusercontent.com/u/1?v=4",
+  }));
+
+  beforeEach(() => {
+    searchRepositories.mockResolvedValue({ totalCount: 100, items: rows });
+  });
+
+  function rowLinks() {
+    return rows.map((row) => screen.getByRole("link", { name: row.fullName }));
+  }
+
+  function pageLink(name: string) {
+    return within(paginationNav()).getByRole("link", { name });
+  }
+
+  // 先頭から Tab を count 回押し、止まった要素を順に返す
+  async function tabStops(count: number) {
+    const user = userEvent.setup();
+    const stops: (Element | null)[] = [];
+    for (let i = 0; i < count; i++) {
+      await user.tab();
+      stops.push(document.activeElement);
+    }
+    return stops;
+  }
+
+  it("AC-26b1: /?q=react&page=2（総件数100・3行）で Tab を押すと、入力欄 → 検索 → 3行のリンク → 前へ → 1 → 2 → 3 → 4 → 次へ の順に移り、その次はページの外へ出る", async () => {
+    await renderPage({ q: "react", page: "2" });
+
+    const stops = await tabStops(12);
+
+    expect(stops).toEqual([
+      screen.getByRole("searchbox", { name: "キーワード" }),
+      screen.getByRole("button", { name: "検索" }),
+      ...rowLinks(),
+      pageLink("前へ"),
+      pageLink("1"),
+      pageLink("2"),
+      pageLink("3"),
+      pageLink("4"),
+      pageLink("次へ"),
+      document.body,
+    ]);
+    // 現在のページ（2）もリンクとして Tab で止まる
+    expect(stops[7]).toHaveAttribute("aria-current", "page");
+  });
+
+  it("AC-26b1: 1ページ目では押せない「前へ」に止まらない", async () => {
+    await renderPage({ q: "react", page: "1" });
+
+    const stops = await tabStops(11);
+
+    expect(stops).toEqual([
+      screen.getByRole("searchbox", { name: "キーワード" }),
+      screen.getByRole("button", { name: "検索" }),
+      ...rowLinks(),
+      pageLink("1"),
+      pageLink("2"),
+      pageLink("3"),
+      pageLink("4"),
+      pageLink("次へ"),
+      document.body,
+    ]);
+    expect(stops).not.toContain(within(paginationNav()).getByText("前へ"));
+  });
+
+  it("AC-26b1: 最終ページ（4）では押せない「次へ」に止まらない", async () => {
+    await renderPage({ q: "react", page: "4" });
+
+    const stops = await tabStops(11);
+
+    expect(stops).toEqual([
+      screen.getByRole("searchbox", { name: "キーワード" }),
+      screen.getByRole("button", { name: "検索" }),
+      ...rowLinks(),
+      pageLink("前へ"),
+      pageLink("1"),
+      pageLink("2"),
+      pageLink("3"),
+      pageLink("4"),
+      document.body,
+    ]);
+    expect(stops).not.toContain(within(paginationNav()).getByText("次へ"));
+  });
+
+  it("AC-26b1: 行リンクとページネーションのリンクは href を持つ a 要素で、tabindex が負でない（Enter で開ける）", async () => {
+    await renderPage({ q: "react", page: "2" });
+
+    const links = [
+      ...rowLinks(),
+      ...within(paginationNav()).getAllByRole("link"),
+    ];
+    expect(links).toHaveLength(3 + 6);
+    for (const link of links) {
+      expect(link.tagName).toBe("A");
+      expect(link).toHaveAttribute("href");
+      expect(link.tabIndex).toBeGreaterThanOrEqual(0);
+    }
   });
 });

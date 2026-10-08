@@ -16,7 +16,7 @@ export function OutOfRangeNotice({ q, target }: OutOfRangeNoticeProps) {
       : `最終ページ（${target.page}ページ目）へ`;
 
   return (
-    <div className="flex flex-col items-center gap-3 py-8">
+    <div role="status" className="flex flex-col items-center gap-3 py-8">
       <p>指定されたページは存在しません</p>
       <Link href={buildSearchPath(q, page)} className="underline">
         {label}

@@ -190,3 +190,15 @@ describe("SearchResults: 1,000件上限の注記", () => {
     },
   );
 });
+
+describe("SearchResults: 代替テキスト（0011）", () => {
+  it("AC-26c2: 各行のオーナーアイコンの img の alt はオーナーのログイン名である", () => {
+    renderResults({ totalCount: 3, items: makeItems(3) });
+
+    const rows = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    rows.forEach((row, i) => {
+      expect(within(row).getByRole("img")).toHaveAttribute("alt", `owner${i}`);
+    });
+  });
+});

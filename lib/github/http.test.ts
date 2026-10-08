@@ -278,3 +278,47 @@ describe("githubGet: 失敗の分類", () => {
     });
   });
 });
+
+describe("githubGet: キャッシュの再検証時間", () => {
+  function calledInit(mock: ReturnType<typeof stubFetch>) {
+    return mock.mock.calls[0]?.[1];
+  }
+
+  it("AC-29a: endpoint が search のとき fetch の next.revalidate に 300 を渡す", async () => {
+    const fetchMock = stubFetch(async () => jsonResponse({}));
+
+    await githubGet("search", "/search/repositories", { q: "react" });
+
+    expect(calledInit(fetchMock)?.next).toEqual({ revalidate: 300 });
+  });
+
+  it("AC-29b: endpoint が repo のとき fetch の next.revalidate に 600 を渡す", async () => {
+    const fetchMock = stubFetch(async () => jsonResponse({}));
+
+    await githubGet("repo", "/repos/vercel/next.js");
+
+    expect(calledInit(fetchMock)?.next).toEqual({ revalidate: 600 });
+  });
+
+  it.each(["search", "repo"] as const)(
+    "AC-29a・29b（補強）: endpoint が %s のとき cache オプションは指定しない",
+    async (endpoint) => {
+      const fetchMock = stubFetch(async () => jsonResponse({}));
+
+      await githubGet(endpoint, "/repos/vercel/next.js");
+
+      expect(calledInit(fetchMock)?.cache).toBeUndefined();
+    },
+  );
+
+  it.each(["search", "repo"] as const)(
+    "AC-29a・29b（補強）: endpoint が %s のとき再検証時間を付けても signal は渡したままである",
+    async (endpoint) => {
+      const fetchMock = stubFetch(async () => jsonResponse({}));
+
+      await githubGet(endpoint, "/repos/vercel/next.js");
+
+      expect(calledInit(fetchMock)?.signal).toBeInstanceOf(AbortSignal);
+    },
+  );
+});

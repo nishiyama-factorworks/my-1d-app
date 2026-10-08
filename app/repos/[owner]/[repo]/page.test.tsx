@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { GitHubApiError } from "@/lib/github/errors";
 import type { GitHubErrorKind, RepoDetail } from "@/lib/github/types";
-import Page from "./page";
+import Page, { generateMetadata } from "./page";
 
 // 取得 API（ネットワーク境界）だけを差し替える。ファクトリで丸ごと置き換えるので
 // 本物の client.ts（server-only）は読み込まれない。
@@ -169,7 +169,7 @@ describe("詳細ページ", () => {
       ],
     },
   ])(
-    "$label のとき、ページは投げずに role=alert の中に仕様6.1の文言と「再試行」ボタンを表示し、詳細の見出しは出ない",
+    "$label のとき、ページは投げずに role=alert の中に仕様6.1の文言と「再試行」ボタンを表示し、詳細の見出し（vercel/next.js）は出ず、レベル1の見出し「リポジトリを表示できませんでした」が出る",
     async ({ error, texts }) => {
       getRepository.mockRejectedValue(error());
 
@@ -180,7 +180,15 @@ describe("詳細ページ", () => {
         expect(alert.getByText(text)).toBeInTheDocument();
       }
       expect(alert.getByRole("button", { name: "再試行" })).toBeInTheDocument();
-      expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+      expect(
+        screen.queryByRole("heading", { level: 1, name: "vercel/next.js" }),
+      ).toBeNull();
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "リポジトリを表示できませんでした",
+        }),
+      ).toBeInTheDocument();
     },
   );
 
@@ -359,5 +367,41 @@ describe("詳細ページ", () => {
       ).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "トップへ戻る" })).toBeNull();
     });
+  });
+});
+
+describe("詳細ページ: タイトル（0011）", () => {
+  function callMetadata(params: { owner: string; repo: string }) {
+    return generateMetadata({
+      params: Promise.resolve(params),
+      searchParams: Promise.resolve({}),
+    });
+  }
+
+  it("AC-28c: /repos/vercel/next.js のとき、タイトルは「vercel/next.js」で、getRepository は呼ばれない", async () => {
+    const metadata = await callMetadata({ owner: "vercel", repo: "next.js" });
+
+    expect(metadata).toEqual({ title: "vercel/next.js" });
+    expect(getRepository).not.toHaveBeenCalled();
+  });
+
+  it("AC-28c: タイトルは API の fullName ではなく URL の owner・repo をそのまま使う", async () => {
+    const metadata = await callMetadata({ owner: "VERCEL", repo: "NEXT.JS" });
+
+    expect(metadata).toEqual({ title: "VERCEL/NEXT.JS" });
+  });
+
+  it("仕様 6.1: getRepository が NOT_FOUND で失敗する状態でも、タイトルは「vercel/no-such-repo」に解決する", async () => {
+    getRepository.mockRejectedValue(
+      new GitHubApiError("NOT_FOUND", { status: 404 }),
+    );
+
+    const metadata = await callMetadata({
+      owner: "vercel",
+      repo: "no-such-repo",
+    });
+
+    expect(metadata).toEqual({ title: "vercel/no-such-repo" });
+    expect(getRepository).not.toHaveBeenCalled();
   });
 });

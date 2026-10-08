@@ -53,6 +53,8 @@
 - 詳細ページ（`/repos/<owner>/<repo>`）のエラー: `GitHubApiError` の `kind` が `NOT_FOUND` のときだけ `notFound()` を呼び、`app/repos/[owner]/[repo]/not-found.tsx` を出す（ルートの `app/not-found.tsx` は置かない）。それ以外の `GitHubApiError` は `ApiErrorView`、`GitHubApiError` 以外の例外はそのまま投げる。URL の `owner` `repo` は加工せず `getRepository` に渡し、不正な形式は `getRepository` が `fetch` 前に `NOT_FOUND` にする
 - 検索条件の持ち回り（0009）: 保存せず、詳細ページの URL のクエリ（`q` `page`）で持ち回る。戻り先は `buildBackPath` が `parseSearchParams`（0004）で検証・正規化し、`buildSearchPath` で作り直す（受け取った文字列をそのまま `href` にしない。`q` が空、または 257 文字以上なら `/`、`page` が不正なら 1）。検索条件は `getRepository` の呼び出しに影響しない。404 の「トップへ戻る」は `searchParams` を受け取れないため `/` 固定
 - キーワードの上限 256 は `lib/search/constants.ts`（`SEARCH_KEYWORD_MAX_LENGTH`）と `lib/github/client.ts`（内部の `MAX_Q_LENGTH`）に重複している。一本化は Issue #20（0018）
+- 取得のキャッシュ（0011、ADR 0005）: `lib/github/http.ts` の `fetch` に `next: { revalidate }` を渡す（検索 300 秒・詳細 600 秒）。`cache` は指定しない。200 の応答だけが保存され、キーは URL とリクエストヘッダ（トークンを含む）ごと。保存されるのは公開リポジトリの情報だけ（非公開と確認できないものは 0003 で返さない）。`searchParams` を読む動的ルートでも効くことを実機で確認済み
+- ページタイトル（0011）: ルートレイアウトの `metadata.title` は `{ default: アプリ名, template: "%s | アプリ名" }`、`lang="ja"`。`template` は同じセグメントの `page.tsx`（トップ）には効かないため、トップは `generateMetadata` で `title.absolute` の完成形（`<q> の検索結果 | アプリ名`、`q` なしはアプリ名のみ）を返す。詳細は `generateMetadata` で URL の `params` から `<owner>/<repo>` を返し（API を呼ばない）、`template` が `| アプリ名` を付ける。404 とエラーはルートの `default`（アプリ名）になる
 - GitHub API 層の防御策: 宛先オリジンは `api.github.com` に固定。公開と確認できないリポジトリは返さない。レスポンスの `avatar_url` / `html_url` は https かつ GitHub のホストのみ許可する
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
 - 認証・認可: <方針>
@@ -64,4 +66,10 @@
 
 ## 7. 非機能要件
 
-<性能の目安、アクセシビリティ、対応ブラウザ、ログ/監視>
+- アクセシビリティ（0011）:
+  - すべての画面で `lang="ja"`、`h1` がちょうど 1 つ、`main` がちょうど 1 つ、見出しのレベルが飛ばない。ルートレイアウトは `main` と見出しを持たず、各ページが持つ。独立した画面（404、`app/error.tsx`、詳細の API エラー）も自前の `h1` を持つ。確認は `tests/a11y/page-structure.test.tsx`
+  - 状態メッセージ: 読み込み中・0件・範囲外は `role="status"`、エラーは `role="alert"`
+  - フォーカス表示はブラウザ既定を使い、消さない。`tests/a11y/focus-outline.test.ts` が `app/` `features/` `lib/` `components/` と `app/globals.css` の `outline-none` 等を検出する（shadcn/ui の部品を `components/ui/` に入れたときにこの検査に引っかかったら、AC-26b2 を見直す）
+  - 自動のアクセシビリティチェックのツール（jest-axe 等）は導入していない。確認は Testing Library の `role` / ラベルによる検索、`eslint-config-next` 経由の `jsx-a11y`、目視
+- レスポンシブ: 幅 320px 程度で横スクロールが出ないことを目視で確認する（長い文字列は `break-all`、ページネーションは `flex-wrap`、入力欄は `w-full min-w-0`）。jsdom では検証できないため、自動検査は 0件の案内の折り返し指定だけ
+- 性能: 不要なクライアント JS を増やさない（`"use client"` は `app/error.tsx`、検索フォーム、再試行ボタンの末端のみ）。取得のキャッシュは上の 5 節

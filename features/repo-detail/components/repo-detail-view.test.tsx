@@ -135,3 +135,11 @@ describe("RepoDetailView: 詳細の表示", () => {
     );
   });
 });
+
+describe("RepoDetailView: 代替テキスト（0011）", () => {
+  it("AC-26c2: オーナーアイコンの img の alt はオーナーのログイン名（vercel）である", () => {
+    renderView();
+
+    expect(screen.getByRole("img")).toHaveAttribute("alt", "vercel");
+  });
+});
