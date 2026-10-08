@@ -111,6 +111,68 @@ function findSecretLike(md: string): SecretHit[] {
   return hits;
 }
 
+/**
+ * 見出し（# 〜 ######。text が完全一致する最初のもの）の直下から、同じかそれより上のレベルの
+ * 次の見出しの手前までの本文を返す。フェンス内の # 行では切れない。見出しが無ければ null
+ */
+function getSection(md: string, heading: string): string | null {
+  let fence: { char: string; length: number } | null = null;
+  let level = 0;
+  let found = false;
+  const body: string[] = [];
+  for (const line of splitLines(md)) {
+    const fenceMatch = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (fence !== null) {
+      if (
+        fenceMatch !== null &&
+        fenceMatch[1][0] === fence.char &&
+        fenceMatch[1].length >= fence.length
+      ) {
+        fence = null;
+      }
+      if (found) body.push(line);
+      continue;
+    }
+    if (fenceMatch !== null) {
+      fence = { char: fenceMatch[1][0], length: fenceMatch[1].length };
+      if (found) body.push(line);
+      continue;
+    }
+    const match = /^(#{1,6})[ \t]+(.+?)[ \t]*$/.exec(line);
+    if (match !== null) {
+      if (found && match[1].length <= level) break;
+      if (!found && match[2] === heading) {
+        found = true;
+        level = match[1].length;
+        continue;
+      }
+    }
+    if (found) body.push(line);
+  }
+  return found ? body.join("\n") : null;
+}
+
+type PnpmCommand = {
+  /** direct: `pnpm <名前>` / run: `pnpm run <名前>` / exec: `pnpm exec <コマンド名>` */
+  kind: "direct" | "run" | "exec";
+  name: string;
+};
+
+/** 本文（フェンス内を含む）の `pnpm <名前>` `pnpm run <名前>` `pnpm exec <名前>` を出現順に返す */
+function findPnpmCommands(md: string): PnpmCommand[] {
+  const commands: PnpmCommand[] = [];
+  // 直前が文字・数字・_ / . - の `pnpm`（日本語の直後、パスの一部など）は拾わない。名前は英字始まり
+  const pattern =
+    /(?<![\p{L}\p{N}_/.-])pnpm[ \t]+(?:(run|exec)[ \t]+)?([A-Za-z][\w-]*(?::[\w-]+)*)/gu;
+  for (const line of splitLines(md)) {
+    for (const m of line.matchAll(pattern)) {
+      const kind = m[1] === "run" ? "run" : m[1] === "exec" ? "exec" : "direct";
+      commands.push({ kind, name: m[2] });
+    }
+  }
+  return commands;
+}
+
 // ---- 純粋関数の下請け ----
 
 function splitLines(md: string): string[] {
@@ -239,6 +301,78 @@ describe("extractHeadings", () => {
 
   it("AC-30a〜AC-30d（見出し判定）: # の後ろに空白が無い行は見出しにしない", () => {
     expect(extractHeadings("##x\n###y\n")).toEqual([]);
+  });
+});
+
+describe("getSection", () => {
+  it("AC-30a〜AC-30d（節の取得）: ### の本文は次の ### または ## の手前までで、## の本文は配下の ### を含む", () => {
+    const md = ["## A", "a本文", "### A1", "a1本文", "### A2", "a2本文", "## B", "b本文"].join("\n");
+
+    expect(getSection(md, "A1")).toBe("a1本文");
+    expect(getSection(md, "A")).toBe("a本文\n### A1\na1本文\n### A2\na2本文");
+  });
+
+  it("AC-30a〜AC-30d（節の取得）: 最後の節はファイル末尾までを返す", () => {
+    expect(getSection("## A\nx\n## B\ny\nz", "B")).toBe("y\nz");
+  });
+
+  it("AC-30a〜AC-30d（節の取得）: フェンスの中の # 行では切れず、フェンスの記号も本文に含む", () => {
+    const md = ["## A", "```bash", "# コメント", "## 見出しに見える行", "```", "後", "## B"].join("\n");
+
+    expect(getSection(md, "A")).toBe("```bash\n# コメント\n## 見出しに見える行\n```\n後");
+  });
+
+  it("AC-30a〜AC-30d（節の取得）: 存在しない見出し・部分一致・フェンス内だけにある見出しは null", () => {
+    const md = ["## 概要説明", "x", "```", "## 隠れた", "```"].join("\n");
+
+    expect(getSection(md, "概要")).toBeNull();
+    expect(getSection(md, "隠れた")).toBeNull();
+    expect(getSection(md, "ない")).toBeNull();
+  });
+
+  it("AC-30a〜AC-30d（節の取得）: CRLF・末尾の空白があっても見出しを見つけ、空の節は空文字列を返す", () => {
+    const md = "## A \r\n## B\r\nb\r\n";
+
+    expect(getSection(md, "A")).toBe("");
+    expect(getSection(md, "B")).toBe("b\n");
+  });
+});
+
+describe("findPnpmCommands", () => {
+  it("AC-30a（コマンド抽出）: pnpm <名前> / pnpm run <名前> / pnpm exec <名前> を種別つきで出現順に返す", () => {
+    const md = "pnpm install\npnpm run dev\npnpm exec playwright install chromium";
+
+    expect(findPnpmCommands(md)).toEqual([
+      { kind: "direct", name: "install" },
+      { kind: "run", name: "dev" },
+      { kind: "exec", name: "playwright" },
+    ]);
+  });
+
+  it("AC-30a（コマンド抽出）: pnpm test と pnpm test:e2e を別の名前として返す（部分一致で取り違えない）", () => {
+    const names = findPnpmCommands("`pnpm test` と `pnpm test:e2e`").map((c) => c.name);
+
+    expect(names).toEqual(["test", "test:e2e"]);
+  });
+
+  it("AC-30a（コマンド抽出）: 文末の記号は名前に含めない", () => {
+    const names = findPnpmCommands("pnpm build. pnpm start: と pnpm lint,").map((c) => c.name);
+
+    expect(names).toEqual(["build", "start", "lint"]);
+  });
+
+  it("AC-30a（コマンド抽出）: pnpm のバージョン番号・日本語の直後の pnpm・パスの一部は拾わない", () => {
+    const md = ["pnpm 12.9.1", "pnpm@12.9.1", "日本語pnpm dev", "docs/pnpm test", "pnpm は速い", "my-pnpm build"].join(
+      "\n",
+    );
+
+    expect(findPnpmCommands(md)).toEqual([]);
+  });
+
+  it("AC-30a（コマンド抽出）: フェンスの中のコマンドも返す", () => {
+    const md = ["```bash", "pnpm install", "pnpm dev", "```"].join("\n");
+
+    expect(findPnpmCommands(md).map((c) => c.name)).toEqual(["install", "dev"]);
   });
 });
 
@@ -415,6 +549,97 @@ const EXPECTED_HEADINGS: Heading[] = [
 describe("README の見出し", () => {
   it("AC-30a〜AC-30d（前提）: README の ## と ### の見出しが仕様 4.1 の名前と順で過不足なく並ぶ", () => {
     expect(extractHeadings(readme)).toEqual(EXPECTED_HEADINGS);
+  });
+});
+
+// ---- T2: 前半（概要・セットアップ・構成と判断）のキーワード検査 ----
+// 期待値（キーワード）はテスト内のリテラルで持つ。節の取り違えを防ぐため、必ず該当の節の本文だけを見る。
+
+const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf-8")) as {
+  scripts: Record<string, string>;
+};
+
+/** README の節の本文を返す。見出しが無ければテストを失敗させる */
+function readmeSection(heading: string): string {
+  const body = getSection(readme, heading);
+  if (body === null) throw new Error(`README に見出し「${heading}」が無い`);
+  return body;
+}
+
+/** 本文に含まれない文字列を返す（空配列が期待値。どれが欠けたか分かる） */
+function missingStrings(body: string, expected: string[]): string[] {
+  return expected.filter((s) => !body.includes(s));
+}
+
+/** 本文にマッチしない正規表現の source を返す */
+function missingPatterns(body: string, expected: RegExp[]): string[] {
+  return expected.filter((re) => !re.test(body)).map((re) => String(re));
+}
+
+/** pnpm 自体のコマンド（package.json の scripts に無くてよいもの）。Q4: install のみ */
+const PNPM_BUILTIN_COMMANDS = ["install"];
+
+describe("AC-30a: README の概要とセットアップ", () => {
+  it("AC-30a: 概要にアプリの概要（GitHub・リポジトリ・検索・詳細）が書かれている", () => {
+    const body = readmeSection("概要");
+
+    expect(missingStrings(body, ["GitHub", "リポジトリ", "検索", "詳細"])).toEqual([]);
+  });
+
+  it("AC-30a: セットアップに pnpm install・dev・build・start・test・test:e2e と bash scripts/verify.sh が書かれている", () => {
+    const body = readmeSection("セットアップ");
+    const names = findPnpmCommands(body).map((c) => c.name);
+
+    expect(
+      ["install", "dev", "build", "start", "test", "test:e2e"].filter((n) => !names.includes(n)),
+    ).toEqual([]);
+    expect(missingStrings(body, ["bash scripts/verify.sh"])).toEqual([]);
+  });
+
+  it("AC-30a: セットアップに GITHUB_TOKEN が任意で、未設定でも動くことが書かれている", () => {
+    const body = readmeSection("セットアップ");
+
+    expect(missingStrings(body, ["GITHUB_TOKEN", "任意", "未設定"])).toEqual([]);
+  });
+
+  it("AC-30a: README の pnpm <名前> は pnpm 自体のコマンド（install）を除き、すべて package.json の scripts にある", () => {
+    const commands = findPnpmCommands(readme);
+    // exec は pnpm 経由で別コマンドを実行する形で、scripts の名前ではない
+    const scriptNames = commands
+      .filter((c) => c.kind !== "exec")
+      .map((c) => c.name)
+      .filter((n) => !PNPM_BUILTIN_COMMANDS.includes(n));
+    const unknown = scriptNames.filter((n) => !Object.hasOwn(packageJson.scripts, n));
+
+    expect(scriptNames.length).toBeGreaterThan(0);
+    expect(unknown).toEqual([]);
+  });
+});
+
+describe("AC-30b: README の構成と判断", () => {
+  it("AC-30b: 画面構成とルーティングに / と /repos/[owner]/[repo] が書かれている", () => {
+    const body = readmeSection("画面構成とルーティング");
+
+    expect(missingStrings(body, ["`/`", "/repos/[owner]/[repo]"])).toEqual([]);
+  });
+
+  it("AC-30b: ディレクトリ構成に app/ features/ lib/ components/ tests/ e2e/ docs/ が書かれ、components/ は未作成と明記されている", () => {
+    const body = readmeSection("ディレクトリ構成");
+    const dirs = ["app/", "features/", "lib/", "components/", "tests/", "e2e/", "docs/"];
+    const componentsLines = body
+      .split(/\r?\n/)
+      .filter((line) => line.includes("`components/`"));
+
+    expect(missingStrings(body, dirs.map((d) => `\`${d}\``))).toEqual([]);
+    // 「未作成」は components/ と同じ行にあること（別の行の「未作成」では通さない）
+    expect(componentsLines.filter((line) => line.includes("未作成"))).not.toEqual([]);
+  });
+
+  it("AC-30b: 工夫した点と理由に subscribers_count・サーバー側・URL・1,000 件・300 秒・600 秒が書かれている", () => {
+    const body = readmeSection("工夫した点と理由");
+
+    expect(missingStrings(body, ["subscribers_count", "サーバー側", "URL"])).toEqual([]);
+    expect(missingPatterns(body, [/1,?000\s*件/, /300\s*秒/, /600\s*秒/])).toEqual([]);
   });
 });
 
