@@ -1,65 +1,91 @@
 # 0008: 詳細ページ
 
-- Status: draft
+- Status: approved
 - 作成日: 2026-10-07
-- Issue: なし（リポジトリ作成前。起票後に記入）
+- Issue: #8
 - 関連: `0001-github-repo-search.md`（親仕様）、依存: 0003, 0004
 
 ## 1. 背景と目的
+
 リポジトリの詳細（言語、Star数、Watcher数、Fork数、Issue数など）を、モーダルではなく独立したページとして表示する。
 
 ## 2. 対象ユーザーと前提
+
 - ロール: 閲覧者。ログイン不要。
-- 前提: 0003（`getRepository`）と0004（数値・言語の整形）が完了している。URLを直接開いても表示できる。
+- 前提: 0003（`getRepository`）と0004（数値・言語の整形）が完了している。URLを直接開いても表示できる。検索結果の一覧（0006）は、すでに `/repos/<owner>/<repo>` へリンクしている。
 
 ## 3. ユーザーストーリー
+
 - 閲覧者として、リポジトリのStar数・Watcher数・Fork数・Issue数・言語を確認できる。それはリポジトリの規模や活発さを判断するためである。
 - 閲覧者として、詳細ページのURLをそのまま共有・ブックマークできる。それは後から同じ内容を開けるようにするためである。
 
 ## 4. 範囲
+
 ### 4.1 やること
+
 - `/repos/<owner>/<repo>` のルート
 - `getRepository` による再取得と表示
 - 数値・言語の整形表示（0004の関数）
 - GitHub本体へのリンク
+- `/` へ戻るリンク
 
 ### 4.2 やらないこと（Non-goals）
+
 - 検索状態を引き継いだ戻り導線（0009。ここでは `/` へ戻るリンクのみ）
-- 読み込み中・404・エラーの専用表示（0010）。存在しない場合は `notFound()` を呼ぶところまで
+- 読み込み中・404・エラーの専用表示（0010）。存在しない場合は `notFound()` を呼ぶところまで。`NOT_FOUND` 以外のエラーは握りつぶさずにそのまま投げる（0006と同じ）
+- ブラウザタブのタイトル（`metadata`）の設定（0011。雛形は0017）
 
 ## 5. 受け入れ条件（テストに直訳できる粒度で）
 
-> `getRepository` をモックして検証する。
+> `getRepository` をモックして検証する。ページ関数（Server Component）を直接呼んで描画する。
 
 | ID | Given | When | Then |
 | --- | --- | --- | --- |
-| AC-11 | `/repos/vercel/next.js`。APIが詳細を返す | ページを表示する | リポジトリ名、オーナーアイコン（代替テキストあり）、オーナー名、言語、Star数、Watcher数、Fork数、Issue数、GitHub本体へのリンク（`html_url`）が表示される。モーダルではなく独立したページである |
-| AC-12 | 検索を経由せず、詳細ページのURLを直接開く（リロード・共有を含む） | ページを表示する | `getRepository("vercel", "next.js")` で取得した内容が表示される |
+| AC-11a | `/repos/vercel/next.js`。APIが `fullName=vercel/next.js`、`ownerLogin=vercel`、`language=TypeScript`、Star数・Watcher数・Fork数・Issue数を返す | ページを表示する | レベル1の見出しに `vercel/next.js` が表示される。オーナーアイコンが代替テキスト `vercel`（オーナーのログイン名）で表示される。ラベル `オーナー`・`言語`・`Star数`・`Watcher数`・`Fork数`・`Issue数` のそれぞれに、`vercel`・`TypeScript` と各数値が対で表示される |
+| AC-11b | 同上。`htmlUrl=https://github.com/vercel/next.js` | ページを表示する | 名前が `GitHub で開く` のリンクがあり、`href` が `htmlUrl` と等しい。同じタブで開く（`target` を付けない）。`rel` は `noopener noreferrer` |
+| AC-11c | 同上 | ページを表示する | モーダル（`role="dialog"`）ではなく独立したページとして表示される。名前が `トップへ戻る` のリンクがあり、`href` が `/` |
+| AC-12 | 検索を経由せず、詳細ページのURLを直接開く（リロード・共有を含む） | ページを表示する | URLの `owner` `repo` を加工せずに `getRepository("vercel", "next.js")` を1回呼び、取得した内容が表示される。表示する名前は、URLではなくAPIの応答（`fullName`）から取る |
 | AC-13 | `stargazers_count=100`、`subscribers_count=7`、`open_issues_count=5` | ページを表示する | Star数が100、Watcher数が7、Issue数が5と表示される（Watcher数にStar数を表示しない） |
 | AC-14a | Star数が1234567、Fork数が0 | ページを表示する | `1,234,567`、`0` と表示される |
 | AC-14b | `language` が `null` | ページを表示する | 言語欄に `-` が表示される |
-| AC-20a | APIが404（`NOT_FOUND`）で失敗する | ページを表示する | `notFound()` が呼ばれる（404の表示内容は0010） |
+| AC-20a | APIが404（`NOT_FOUND`）で失敗する | ページを表示する | `notFound()` が呼ばれ、詳細の内容は表示されない（404の表示内容は0010） |
+| AC-20b | APIが `NOT_FOUND` 以外（`RATE_LIMIT` `UPSTREAM` `NETWORK` など）で失敗する | ページを表示する | `notFound()` を呼ばず、エラーをそのまま投げる（握りつぶさない。専用の表示は0010） |
 
 ## 6. 画面・API の契約
+
 ### 6.1 画面（該当する場合）
-- URL: `/repos/<owner>/<repo>`
-- 表示要素: タイトル、オーナーアイコン、リポジトリ名（`owner/repo`）、オーナー名、言語、Star数、Watcher数、Fork数、Issue数、GitHub本体へのリンク、トップへ戻るリンク（`/`）
+
+- URL: `/repos/<owner>/<repo>`（`app/repos/[owner]/[repo]/page.tsx`）
+- 表示要素:
+  - レベル1の見出し: `owner/repo`（APIの `fullName`）
+  - オーナーアイコン（代替テキストはオーナーのログイン名）
+  - 項目（ラベルと値の対）: `オーナー`、`言語`、`Star数`、`Watcher数`、`Fork数`、`Issue数`
+  - リンク: `GitHub で開く`（GitHub本体）、`トップへ戻る`（`/`）
 - 状態: 通常 / `NOT_FOUND`（`notFound()` を呼ぶ）。読み込み中・エラー表示は0010。
+- 数値は `formatNumber`、言語は `formatLanguage`（0004）で整形する。
+- `Issue数` はAPIの `open_issues_count`（0003の `openIssuesCount`）。
 
 ### 6.2 API・Server Action（該当する場合）
-`getRepository(owner, repo)`（0003）をサーバー側で呼ぶ。URLの `owner` `repo` を渡す。
+
+`getRepository(owner, repo)`（0003）をサーバー側で呼ぶ。URLの `owner` `repo` を加工せずに渡す。`owner` `repo` の形式が不正な値は、`getRepository` が `fetch` を呼ばずに `NOT_FOUND` で失敗する（0003のAC-13c）ので、ページ側で別の検証はしない。
 
 ## 7. データ
+
 保存はしない。検索結果は引き継がず、毎回APIから取得する。
 
 ## 8. 非機能要件
+
 - アクセシビリティ: アイコンに代替テキストを付ける。詳細な確認は0011。
-- セキュリティ: URLの `owner` `repo` は外部入力として扱い、エンコードして扱う。
+- セキュリティ: URLの `owner` `repo` は外部入力として扱う。加工せず `getRepository` に渡し、検証と符号化は0003に任せる（ページ側でURLやパスを組み立てない）。`htmlUrl` と `ownerAvatarUrl` は0003で検証済み（`https`・ホスト限定）の値だけを使う。外部リンクには `rel="noopener noreferrer"` を付ける。
+- 画像: `next/image` を使う（許可ホストは `next.config.ts` の `remotePatterns`。0006と同じ）。
 
 ## 9. 未決事項
-- なし
+
+- なし（2026-10-08: タイトル=ページの見出し、外部リンク=同じタブ、アイコンの代替テキスト=ログイン名を人間が決定）
 
 ## 10. 変更履歴
+
 | 日付 | 変更 | 理由 |
 | --- | --- | --- |
 | 2026-10-07 | 初版 | 全体仕様0001から分割 |
+| 2026-10-08 | Issue #8 を記入。AC-11 を 11a〜11c に分け（表示項目とラベル、GitHubへのリンクの開き方と `rel`、独立ページと戻るリンク）、AC-20b（`NOT_FOUND` 以外は握りつぶさない）を追加。6 節に画面の具体（見出し、ラベル、リンク名、`app/repos/[owner]/[repo]/page.tsx`）を追記。`metadata` は0011と明記 | `/feature 8` の仕様確認で、「タイトル」の意味、リンクの開き方、代替テキスト、AC-11 の粒度が曖昧と判明し、人間が決定 |

@@ -31,6 +31,7 @@
   - 検索結果一覧（`components/search-results.tsx`）。取得は `app/page.tsx` が `q` があるときだけ `searchRepositories` で行い、結果を渡す（一覧は Server Component）
   - ページネーション（`components/pagination.tsx`。番号の並びは `lib/page-items.ts` の `buildPageItems`）。最大ページ数は `lib/search/` の `calculateMaxPage`。押せない「前へ」「次へ」は `role="link"` と `aria-disabled="true"` の `span`
   - 範囲外ページの案内（`components/out-of-range-notice.tsx`）。範囲外の判定は `app/page.tsx` が 2 段で行う: `page` が `calculateMaxPage(SEARCH_RESULT_LIMIT)`（現在 34）超なら GitHub API を呼ばずに範囲外（422 とレート制限の消費を避ける）、取得後は総件数に対して最終ページ超なら範囲外。総件数 0 は範囲外にしない
+  - `features/repo-detail/`: 詳細表示（`components/repo-detail-view.tsx`。見出し・オーナーアイコン・6 項目・GitHub へのリンク・トップへ戻るリンク）。取得は `app/repos/[owner]/[repo]/page.tsx` が `getRepository` で行い、結果を渡す（どちらも Server Component）。数値と言語の整形は `lib/search/format.ts`
 - `components/ui/`: 再利用 UI（shadcn/ui の部品もここ）
 - `lib/`: 横断ユーティリティ
 - `lib/github/`: GitHub REST API の呼び出し層。GitHub API は**ここだけ**が呼ぶ。公開面は `lib/github/index.ts`（`searchRepositories` / `getRepository` / `GitHubApiError` と型）
@@ -46,6 +47,7 @@
 - Client Component は `features/search/components/search-form.tsx` のみ（`"use client"`）。`lib/github/`（server-only）を読み込まない。ページ（`app/page.tsx`）は Server Component のままで、`searchParams` を `parseSearchParams` で解釈して `initialQuery` を渡す
 - 画像: オーナーアイコンは `next/image`。外部ホストは `avatars.githubusercontent.com` の `/u/**`（クエリは `?v=4` のみ）だけを `next.config.ts` の `images.remotePatterns` で許可する（ホストは 0003 の `avatar_url` の検証と一致。**パスとクエリは 0003 より狭い**ので、0003 を通っても `/u/` 以外のパスや `?v=4` 以外のクエリのアイコンは `/_next/image` が 400 を返し、画像が壊れる。開発モードではローダーが例外を投げてページが落ちる。GitHub が `?v=4` を変えると全アイコンが壊れる点にも注意）
 - GitHub API のエラー: `GitHubApiError`（`kind`: `RATE_LIMIT` `NOT_FOUND` `VALIDATION` `UPSTREAM` `NETWORK`、`status`、`resetAt`）を throw する。メッセージは種別ごとの固定文言で、トークン・URL・レスポンス本文を含めない
+- 詳細ページ（`/repos/<owner>/<repo>`）のエラー: `GitHubApiError` の `kind` が `NOT_FOUND` のときだけ `notFound()` を呼ぶ。それ以外（`RATE_LIMIT` `UPSTREAM` `NETWORK` など）は握りつぶさずそのまま投げる。専用の表示は 0010。URL の `owner` `repo` は加工せず `getRepository` に渡し、不正な形式は `getRepository` が `fetch` 前に `NOT_FOUND` にする
 - GitHub API 層の防御策: 宛先オリジンは `api.github.com` に固定。公開と確認できないリポジトリは返さない。レスポンスの `avatar_url` / `html_url` は https かつ GitHub のホストのみ許可する
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
 - 認証・認可: <方針>
