@@ -2,6 +2,12 @@
 
 /**
  * @typedef {{ name: string; text: string }} SpecFile
+ * @typedef {{ number: number; title: string; state: "OPEN" | "CLOSED" }} IssueSummary
+ * @typedef {{ specNumber: string; issueNumbers: number[] }} Duplicate
+ * @typedef {{ issue: IssueSummary; specNumber: string; dependencies: string[]; assumed: number[] }} ReadyEntry
+ * @typedef {{ specNumber: string; reason: "open" | "no-issue" | "duplicate"; issueNumber?: number }} Blocker
+ * @typedef {{ issue: IssueSummary; specNumber: string; blockers: Blocker[] }} WaitingEntry
+ * @typedef {{ ready: ReadyEntry[]; waiting: WaitingEntry[]; warnings: string[] }} Classification
  */
 
 // 正規表現は入れ子の量指定子を使わない単純な形に保つ（ReDoS を避けるため）。
@@ -76,4 +82,116 @@ export function collectSpecDependencies(files) {
     result.set(name.slice(0, 4), parseDependencies(text));
   }
   return result;
+}
+
+/**
+ * Issue を仕様番号で対応づける。同じ番号が複数あるものは bySpec に入れず duplicates に入れる。
+ * @param {IssueSummary[]} issues
+ * @returns {{ bySpec: Map<string, IssueSummary>; duplicates: Duplicate[] }}
+ */
+export function indexIssuesBySpec(issues) {
+  /** @type {Map<string, IssueSummary[]>} */
+  const grouped = new Map();
+  for (const issue of issues) {
+    const specNumber = extractSpecNumber(issue.title);
+    if (specNumber === null) continue;
+    grouped.set(specNumber, [...(grouped.get(specNumber) ?? []), issue]);
+  }
+
+  /** @type {Map<string, IssueSummary>} */
+  const bySpec = new Map();
+  /** @type {Duplicate[]} */
+  const duplicates = [];
+  for (const [specNumber, group] of grouped) {
+    if (group.length === 1) {
+      bySpec.set(specNumber, group[0]);
+    } else {
+      duplicates.push({
+        specNumber,
+        issueNumbers: group.map((i) => i.number).sort((a, b) => a - b),
+      });
+    }
+  }
+  return { bySpec, duplicates };
+}
+
+/**
+ * 依存がすべて完了した OPEN の Issue（ready）と、未完了の依存がある Issue（waiting）に分ける。
+ * @param {{ issues: IssueSummary[]; specDependencies: Map<string, string[]>; assumeClosed: number[] }} input
+ * @returns {Classification}
+ */
+export function classifyIssues({ issues, specDependencies, assumeClosed }) {
+  const { bySpec, duplicates } = indexIssuesBySpec(issues);
+  const duplicateSpecs = new Set(duplicates.map((d) => d.specNumber));
+  const assumed = new Set(assumeClosed);
+
+  /** @type {string[]} */
+  const duplicateWarnings = duplicates.map(
+    (d) =>
+      `警告: 仕様番号 ${d.specNumber} の Issue が複数あります（${d.issueNumbers.map((n) => `#${n}`).join(", ")}）。この番号は未解決として扱います`,
+  );
+  /** @type {string[]} */
+  const missingSpecWarnings = [];
+  /** @type {ReadyEntry[]} */
+  const ready = [];
+  /** @type {WaitingEntry[]} */
+  const waiting = [];
+
+  const sorted = [...issues].sort((a, b) => a.number - b.number);
+  for (const issue of sorted) {
+    if (issue.state !== "OPEN" || assumed.has(issue.number)) continue;
+    const specNumber = extractSpecNumber(issue.title);
+    if (specNumber === null || duplicateSpecs.has(specNumber)) continue;
+
+    const dependencies = specDependencies.get(specNumber);
+    if (dependencies === undefined) {
+      missingSpecWarnings.push(
+        `警告: #${issue.number}（${specNumber}）の仕様ファイルが見つかりません。判定の対象外にします`,
+      );
+      continue;
+    }
+    if (dependencies.length === 0) continue;
+
+    /** @type {Blocker[]} */
+    const blockers = [];
+    /** @type {number[]} */
+    const assumedDependencies = [];
+    for (const dependency of dependencies) {
+      if (duplicateSpecs.has(dependency)) {
+        blockers.push({ specNumber: dependency, reason: "duplicate" });
+        continue;
+      }
+      const target = bySpec.get(dependency);
+      if (target === undefined) {
+        blockers.push({ specNumber: dependency, reason: "no-issue" });
+      } else if (target.state === "CLOSED") {
+        // すでに完了している依存は、仮定の対象にしても「仮定」とは表示しない
+      } else if (assumed.has(target.number)) {
+        assumedDependencies.push(target.number);
+      } else {
+        blockers.push({
+          specNumber: dependency,
+          reason: "open",
+          issueNumber: target.number,
+        });
+      }
+    }
+
+    if (blockers.length > 0) {
+      waiting.push({ issue, specNumber, blockers });
+    } else {
+      ready.push({
+        issue,
+        specNumber,
+        dependencies,
+        assumed: assumedDependencies,
+      });
+    }
+  }
+
+  return {
+    ready,
+    waiting,
+    warnings: [...duplicateWarnings, ...missingSpecWarnings],
+  };
 }

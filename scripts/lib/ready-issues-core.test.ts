@@ -10,10 +10,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
+  classifyIssues,
   collectSpecDependencies,
   extractSpecNumber,
+  indexIssuesBySpec,
   parseDependencies,
 } from "./ready-issues-core.mjs";
+
+type IssueState = "OPEN" | "CLOSED";
+const issue = (number: number, title: string, state: IssueState) => ({
+  number,
+  title,
+  state,
+});
 
 describe("parseDependencies", () => {
   it.each([
@@ -120,5 +129,309 @@ describe("collectSpecDependencies", () => {
 
     // Assert
     expect([...result.entries()]).toEqual([["0003", ["0001", "0002"]]]);
+  });
+});
+
+describe("indexIssuesBySpec", () => {
+  it("AC-7: 仕様番号 0005 の Issue が 2 件あると duplicates に番号と Issue 番号を返し、bySpec に入れない", () => {
+    // Arrange
+    const issues = [
+      issue(3, "[feat] 0003 GitHub APIクライアント", "CLOSED"),
+      issue(5, "[feat] 0005 検索フォーム", "OPEN"),
+      issue(30, "[feat] 0005 検索フォーム（再起票）", "OPEN"),
+    ];
+
+    // Act
+    const { bySpec, duplicates } = indexIssuesBySpec(issues);
+
+    // Assert
+    expect(duplicates).toEqual([{ specNumber: "0005", issueNumbers: [5, 30] }]);
+    expect([...bySpec.keys()]).toEqual(["0003"]);
+  });
+
+  it("AC-6: 仕様番号の無い Issue は bySpec にも duplicates にも入れない", () => {
+    const { bySpec, duplicates } = indexIssuesBySpec([
+      issue(31, "[chore] 開発時依存 braces の既知脆弱性への追随", "OPEN"),
+      issue(32, "[chore] 別の保守作業", "OPEN"),
+    ]);
+
+    expect([...bySpec.keys()]).toEqual([]);
+    expect(duplicates).toEqual([]);
+  });
+});
+
+describe("classifyIssues", () => {
+  it("AC-8: 依存 0003・0004 がどちらも CLOSED の 0008（OPEN）を ready に含める", () => {
+    // Arrange
+    const issues = [
+      issue(3, "[feat] 0003 GitHub APIクライアント", "CLOSED"),
+      issue(4, "[feat] 0004 検索ユーティリティ", "CLOSED"),
+      issue(8, "[feat] 0008 詳細ページ", "OPEN"),
+    ];
+    const specDependencies = new Map([
+      ["0003", []],
+      ["0004", []],
+      ["0008", ["0003", "0004"]],
+    ]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [],
+    });
+
+    // Assert
+    expect(result.ready).toEqual([
+      {
+        issue: issues[2],
+        specNumber: "0008",
+        dependencies: ["0003", "0004"],
+        assumed: [],
+      },
+    ]);
+    expect(result.waiting).toEqual([]);
+  });
+
+  it("AC-9: 0006 が CLOSED・0008 が OPEN のとき 0009 を waiting に入れ、blockers は 0008 だけである", () => {
+    // Arrange
+    const issues = [
+      issue(6, "[feat] 0006 検索結果一覧", "CLOSED"),
+      issue(8, "[feat] 0008 詳細ページ", "OPEN"),
+      issue(9, "[feat] 0009 戻る導線", "OPEN"),
+    ];
+    const specDependencies = new Map([
+      ["0006", []],
+      ["0008", []],
+      ["0009", ["0006", "0008"]],
+    ]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [],
+    });
+
+    // Assert
+    expect(result.ready).toEqual([]);
+    expect(result.waiting).toEqual([
+      {
+        issue: issues[2],
+        specNumber: "0009",
+        blockers: [{ specNumber: "0008", reason: "open", issueNumber: 8 }],
+      },
+    ]);
+  });
+
+  it("AC-10: 依存先 0014 の Issue が無いとき waiting に no-issue として入れる", () => {
+    // Arrange
+    const issues = [issue(13, "[feat] 0013 E2E", "OPEN")];
+    const specDependencies = new Map([["0013", ["0014"]]]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [],
+    });
+
+    // Assert
+    expect(result.ready).toEqual([]);
+    expect(result.waiting).toEqual([
+      {
+        issue: issues[0],
+        specNumber: "0013",
+        blockers: [{ specNumber: "0014", reason: "no-issue" }],
+      },
+    ]);
+  });
+
+  it.each([
+    {
+      name: "CLOSED の Issue（依存が未完了でも）",
+      issues: [
+        issue(1, "[feat] 0001 親仕様", "CLOSED"),
+        issue(2, "[feat] 0002 基盤", "CLOSED"),
+      ],
+      specDependencies: new Map([
+        ["0001", []],
+        ["0002", ["0003"]],
+      ]),
+    },
+    {
+      name: "依存が [] の OPEN の Issue",
+      issues: [issue(2, "[feat] 0002 基盤", "OPEN")],
+      specDependencies: new Map([["0002", []]]),
+    },
+  ])(
+    "AC-11: $name は ready にも waiting にも入れない",
+    ({ issues, specDependencies }) => {
+      const result = classifyIssues({
+        issues,
+        specDependencies,
+        assumeClosed: [],
+      });
+
+      expect(result.ready).toEqual([]);
+      expect(result.waiting).toEqual([]);
+    },
+  );
+
+  it("AC-12: すでに CLOSED の Issue を assumeClosed に入れても、assumed には入れない（実際は閉じているので「仮定」と表示しない）", () => {
+    // Arrange
+    const issues = [
+      issue(6, "[feat] 0006 検索結果一覧", "CLOSED"),
+      issue(9, "[feat] 0009 戻る導線", "OPEN"),
+    ];
+    const specDependencies = new Map([
+      ["0006", []],
+      ["0009", ["0006"]],
+    ]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [6],
+    });
+
+    // Assert
+    expect(result.ready).toEqual([
+      {
+        issue: issues[1],
+        specNumber: "0009",
+        dependencies: ["0006"],
+        assumed: [],
+      },
+    ]);
+  });
+
+  it("AC-12: assumeClosed [8] のとき 0009 を ready に含め、assumed に 8 を入れる", () => {
+    // Arrange
+    const issues = [
+      issue(6, "[feat] 0006 検索結果一覧", "CLOSED"),
+      issue(8, "[feat] 0008 詳細ページ", "OPEN"),
+      issue(9, "[feat] 0009 戻る導線", "OPEN"),
+    ];
+    const specDependencies = new Map([
+      ["0006", []],
+      ["0008", []],
+      ["0009", ["0006", "0008"]],
+    ]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [8],
+    });
+
+    // Assert
+    expect(result.ready).toEqual([
+      {
+        issue: issues[2],
+        specNumber: "0009",
+        dependencies: ["0006", "0008"],
+        assumed: [8],
+      },
+    ]);
+    expect(result.waiting).toEqual([]);
+  });
+
+  it("AC-12: assumeClosed に入れた Issue 自身は CLOSED とみなして ready に含めない", () => {
+    // Arrange: 0008 は依存（0006）が完了しているので、仮定が無ければ ready になる
+    const issues = [
+      issue(6, "[feat] 0006 検索結果一覧", "CLOSED"),
+      issue(8, "[feat] 0008 詳細ページ", "OPEN"),
+      issue(9, "[feat] 0009 戻る導線", "OPEN"),
+    ];
+    const specDependencies = new Map([
+      ["0006", []],
+      ["0008", ["0006"]],
+      ["0009", ["0006", "0008"]],
+    ]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [8],
+    });
+
+    // Assert
+    expect(result.ready.map((entry) => entry.issue.number)).toEqual([9]);
+    expect(result.waiting).toEqual([]);
+  });
+
+  it("AC-7: 重複した番号は候補にならず、それに依存する Issue は「待ち」（Issue が複数）になる", () => {
+    // Arrange
+    const issues = [
+      issue(5, "[feat] 0005 検索フォーム", "OPEN"),
+      issue(30, "[feat] 0005 検索フォーム（再起票）", "OPEN"),
+      issue(7, "[feat] 0007 ページネーション", "OPEN"),
+    ];
+    const specDependencies = new Map([
+      ["0005", ["0001"]],
+      ["0007", ["0005"]],
+    ]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [],
+    });
+
+    // Assert
+    expect(result.ready).toEqual([]);
+    expect(result.waiting).toEqual([
+      {
+        issue: issues[2],
+        specNumber: "0007",
+        blockers: [{ specNumber: "0005", reason: "duplicate" }],
+      },
+    ]);
+  });
+
+  it("AC-7: 同じ仕様番号の Issue が複数あるとき、仕様番号と Issue 番号の一覧を含む警告を返す", () => {
+    // Arrange
+    const issues = [
+      issue(5, "[feat] 0005 検索フォーム", "OPEN"),
+      issue(30, "[feat] 0005 検索フォーム（再起票）", "OPEN"),
+    ];
+    const specDependencies = new Map([["0005", ["0001"]]]);
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [],
+    });
+
+    // Assert
+    expect(result.warnings).toEqual([
+      "警告: 仕様番号 0005 の Issue が複数あります（#5, #30）。この番号は未解決として扱います",
+    ]);
+  });
+
+  it("Q4: 仕様ファイルの無い OPEN の Issue は対象外にして警告を返す", () => {
+    // Arrange
+    const issues = [issue(40, "[feat] 0015 未起票の仕様", "OPEN")];
+    const specDependencies = new Map<string, string[]>();
+
+    // Act
+    const result = classifyIssues({
+      issues,
+      specDependencies,
+      assumeClosed: [],
+    });
+
+    // Assert
+    expect(result.ready).toEqual([]);
+    expect(result.waiting).toEqual([]);
+    expect(result.warnings).toEqual([
+      "警告: #40（0015）の仕様ファイルが見つかりません。判定の対象外にします",
+    ]);
   });
 });
