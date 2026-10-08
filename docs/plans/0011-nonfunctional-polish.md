@@ -270,7 +270,9 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `tests/a11y/focus-outline.test.ts`、`search-form.test.tsx`、`search-results.test.tsx`、`repo-detail-view.test.tsx`（4 ファイル。テストのみ）
   - 完了条件: `pnpm test`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T9: 文書の更新、最終確認、手動確認、レビュー**
+- [ ] **T9: 文書の更新、最終確認、手動確認、レビュー**（進行中: 文書と curl での手動確認は完了。full verify・レビュー・ブラウザで人間に依頼する確認が残る）
+  - 進捗（2026-10-08）: `docs/architecture.md` を更新（5 節にキャッシュとページタイトル、7 節にアクセシビリティ・レスポンシブ・性能）。
+  - curl での手動確認（`pnpm build` → `GITHUB_TOKEN= next start -p 3111`、実 API）: ビルド出力で `/` と `/repos/[owner]/[repo]` は動的（`ƒ`）。`<html lang="ja">` はすべてのパス（`/`、`/?q=react`、`/repos/vercel/next.js`、存在しない詳細、`/no-such-path`）で確認（AC-26e）。`<title>`: `/` → `GitHub リポジトリ検索`、`/?q=react` と `/?q=%20react%20` → `react の検索結果 | GitHub リポジトリ検索`、`/repos/vercel/next.js` → `vercel/next.js | GitHub リポジトリ検索`、存在しない詳細 → `vercel/this-repo-does-not-exist-0011 | GitHub リポジトリ検索`、`/no-such-path`（HTTP 404）→ `GitHub リポジトリ検索`、`/?q=<b>x</b>` → `&lt;b&gt;x&lt;/b&gt; の検索結果 | …` とエスケープ（AC-28a〜28d）。0件（`/?q=zzzxqy0011qqq`）と範囲外（`/?q=react&page=35`）の HTML に `role="status"`、`h1` 1 つ・`main` 1 つ。詳細は `h1` 1・`main` 1。存在しない詳細は HTTP 200・`noindex`・本文は RSC ペイロード（0010 の決定どおり）で、`h1`「リポジトリが見つかりませんでした」を含む。
   - 対応 AC: AC-27（目視）、AC-26b2（フォーカスの見え方の目視）、AC-28a〜28d（実地）、AC-29c（ADR の確定）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（5節: 「GitHub API の取得は `fetch` の `next.revalidate`（検索 300 秒・詳細 600 秒。ADR 0005）。200 だけがキャッシュされ、キーは URL とリクエストヘッダ（トークン）ごと」。7節: アクセシビリティ（`lang="ja"`、各画面の `h1`/`main`、状態表示の `role`、ブラウザ既定のフォーカス表示、構造テストと静的検査の場所）、レスポンシブ（目視、320px）、ページタイトルの形式）、`docs/adr/0005-github-fetch-revalidate.md`（T9 の確認結果の追記）、本計画の進捗メモ（3 ファイル）
