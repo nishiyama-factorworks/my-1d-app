@@ -21,6 +21,45 @@ describe("normalizeKeyword", () => {
   ])("AC-25b: $label を正規化すると null になる", ({ input }) => {
     expect(normalizeKeyword(input)).toBeNull();
   });
+
+  it.each([
+    { label: "U+200B", input: "\u200B" },
+    { label: "U+200C", input: "\u200C" },
+    { label: "U+200D", input: "\u200D" },
+    { label: "U+2060", input: "\u2060" },
+  ])(
+    "AC-1: ゼロ幅文字 $label の 1 文字だけを正規化すると null になる",
+    ({ input }) => {
+      expect(normalizeKeyword(input)).toBeNull();
+    },
+  );
+
+  it.each([
+    { label: "U+200B を 2 文字", input: "\u200B\u200B" },
+    { label: "半角空白・U+200B・半角空白", input: " \u200B " },
+    { label: "U+200B・半角空白・U+200B", input: "\u200B \u200B" },
+    { label: "全角空白(U+3000)・U+200D・タブ", input: "\u3000\u200D\t" },
+  ])(
+    "AC-2: $label（空白とゼロ幅文字だけ）を正規化すると null になる",
+    ({ input }) => {
+      expect(normalizeKeyword(input)).toBeNull();
+    },
+  );
+
+  it.each([
+    { label: "U+200B+foo", input: "\u200Bfoo", expected: "\u200Bfoo" },
+    { label: "a+U+200B+b", input: "a\u200Bb", expected: "a\u200Bb" },
+    {
+      label: "半角空白+foo+U+200B+半角空白",
+      input: " foo\u200B ",
+      expected: "foo\u200B",
+    },
+  ])(
+    "AC-3: $label は前後の空白だけを除いた値になる（ゼロ幅文字は残る）",
+    ({ input, expected }) => {
+      expect(normalizeKeyword(input)).toBe(expected);
+    },
+  );
 });
 
 describe("parseSearchParams", () => {
@@ -93,5 +132,9 @@ describe("parseSearchParams", () => {
     { label: "全角空白のみ（U+3000）", q: "　" },
   ])("AC-25b: q が $label のとき null になる", ({ q }) => {
     expect(parseSearchParams({ q }).q).toBeNull();
+  });
+
+  it("AC-4: q が %E2%80%8B（U+200B だけ）のとき null になる", () => {
+    expect(parseSearchParams({ q: "\u200B" }).q).toBeNull();
   });
 });

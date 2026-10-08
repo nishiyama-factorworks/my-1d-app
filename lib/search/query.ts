@@ -33,8 +33,13 @@ export function parseSearchParams(params: SearchParamsInput): SearchQuery {
   };
 }
 
+// trim() が除かないゼロ幅文字（U+200B・U+200C・U+200D・U+2060）。見た目が空の入力を空と判定するためだけに使う。
+// `g` 付きのため replace 専用（test() に流用すると lastIndex が残る）。
+const ZERO_WIDTH_CHARS = /[\u200B-\u200D\u2060]/g;
+
 export function normalizeKeyword(input: string): string | null {
   // trim は全角空白（U+3000）・タブ・改行も除去するため、見た目が空の入力を空入力として扱える。
   const trimmed = input.trim();
-  return trimmed === "" ? null : trimmed;
+  // ゼロ幅文字と空白だけの入力も空とする。空でないときは、ゼロ幅文字を取り除かず trim した値をそのまま返す。
+  return trimmed.replace(ZERO_WIDTH_CHARS, "").trim() === "" ? null : trimmed;
 }
