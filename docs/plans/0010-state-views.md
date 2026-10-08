@@ -138,7 +138,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `features/state-views/components/loading-status.tsx`・`.test.tsx`、`features/search/components/empty-results.tsx`・`.test.tsx`（4 ファイル）
   - 完了条件: `pnpm test`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: APIエラーの表示部品と再試行ボタン**
+- [x] **T3: APIエラーの表示部品と再試行ボタン**
   - 対応 AC: AC-18a、AC-18b、AC-19a、AC-19b、AC-19c、AC-19d（部品単位）
   - 先に書くテスト: `features/state-views/components/api-error-view.test.tsx`（jsdom。`vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace, refresh }) }))`、各 `vi.fn` は `beforeEach` でリセット。クリックは `@testing-library/user-event`）
     - `AC-18a: RATE_LIMIT・resetAt=2026-10-08T06:42:00Z のとき、role="alert" の中に「GitHub API の利用制限に達しました」と「15:42（日本時間）に解除されます。」と「再試行」ボタンがある`（`within(getByRole("alert"))` で 3 つを取得。`resetAt` は `new Date("2026-10-08T06:42:00Z")`）
@@ -327,4 +327,5 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - 2026-10-08: 人間が計画を承認（Q1〜Q10 はすべて推奨案で確定）。子 Issue には分割せず 1 PR で進める。Status を in-progress にし、T1 の RED から着手。
 - 2026-10-08: T1 完了。RED は仮実装（`""`）で 8/8 件が期待値の不一致（`expected '' to be …`）で失敗、GREEN は `Intl.DateTimeFormat`（`timeZone: "Asia/Tokyo"`, `hourCycle: "h23"`）で 8/8 通過、`verify.sh --quick` PASS。検出力の変異確認 (1)〜(3) は未実施。
 - 2026-10-08: T2 完了。RED は仮実装（`<div />`）で 4 件中 3 件が失敗（`role="status"` が見つからない／文言の要素が見つからない）、残り 1 件（AC-17「含まない」）は計画どおり仮実装でも通過。GREEN は 4/4 通過、`verify.sh --quick` PASS。T2 に変異確認の指定は無いため未実施。
+- 2026-10-08: T3 完了。RED は仮実装（`ApiErrorView` = `<div />`）で 11 件中 7 件が失敗（`role="alert"` が見つからない 5 件、`再試行` ボタンが見つからない 2 件）、AC-19c の 4 件は計画どおり仮実装でも通過。GREEN は 11/11 通過、`verify.sh --quick` PASS。変異確認: (1) `resetAt` を無視 → AC-18a が失敗、(2) `refresh` を `push(location.href)` に → AC-19d が失敗、(3) UPSTREAM と NETWORK の文言取り違え → AC-19a×2・19b が失敗。いずれも元に戻し済み。
 - 前提として読んだ申し送り: 0006 計画（0件・読み込み中・`<Suspense>` への移行）、0007 計画（範囲外の 2 段の判定を一緒に移す、0件は AC-9d の分岐の中、257 文字の `q` の 500、先読みの再確認）、0008 計画（`loading.tsx` と先読み、ストリーミング時の 404 が 200 になる点）。いずれも本計画の 1 節・T4〜T7・T9 に反映した。
