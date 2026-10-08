@@ -220,7 +220,9 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `features/search/components/empty-results.tsx`、`empty-results.test.tsx`、`out-of-range-notice.tsx`、`out-of-range-notice.test.tsx`（4 ファイル）
   - 完了条件: 既存の AC-17・AC-9b・9c のテストは期待値を変えずに通る。`app/page.test.tsx` の `status` 関連（1.2 (g)）も変えずに通る。`pnpm test`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T6: 独立した画面の `h1` と、全画面の構造テスト**
+- [x] **T6: 独立した画面の `h1` と、全画面の構造テスト**
+  - 進捗: RED（対象 3 ファイル 35 件中 8 件失敗。「詳細の API エラー」と `error.tsx` の `h1` が 0 個）→ GREEN（verify --quick PASS、749 件）。変異確認: `h1` の後ろに `h3` を足す（見出しの飛び）／`main` の二重化／API エラー・`error.tsx` の `h1` を `h2` にする／`h1` を `role="alert"` の中に入れる／`h1` を外す、の 6 つすべてで検出。構造テストは 10 画面（範囲外を 2 通りで数えたため、計画の「9 画面」より 1 つ多い）。
+  - 既存テストの変更（計画 1.2 (g) の 1 件だけ。弱めていない）: 詳細ページの API エラー分岐の `it.each` で、`h1` が無いことの検証を「`vercel/next.js` の見出しは出ない」に絞り、`h1`『リポジトリを表示できませんでした』が出ることを足した。
   - 対応 AC: AC-26c1、AC-26d（0件・範囲外のページ単位）
   - 先に書くテスト:
     - `tests/a11y/page-structure.test.tsx`（1.2 (d)）

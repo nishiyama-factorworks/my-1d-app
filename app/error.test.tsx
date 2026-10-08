@@ -37,6 +37,17 @@ describe("想定外の例外の受け皿 error.tsx", () => {
     ).toBeInTheDocument();
   });
 
+  it('AC-26c1: レベル1の見出し「エラーが発生しました」が main の中にあり、role="alert" の外にある', () => {
+    render(<ErrorPage error={new Error("boom")} retry={vi.fn()} />);
+
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "エラーが発生しました",
+    });
+    expect(within(screen.getByRole("main")).getByRole("heading")).toBe(heading);
+    expect(heading.closest('[role="alert"]')).toBeNull();
+  });
+
   it("AC-19e: 「再試行」を押すと retry が1回呼ばれる", async () => {
     const user = userEvent.setup();
     const retry = vi.fn();

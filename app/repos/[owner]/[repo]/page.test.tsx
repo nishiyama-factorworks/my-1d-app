@@ -169,7 +169,7 @@ describe("詳細ページ", () => {
       ],
     },
   ])(
-    "$label のとき、ページは投げずに role=alert の中に仕様6.1の文言と「再試行」ボタンを表示し、詳細の見出しは出ない",
+    "$label のとき、ページは投げずに role=alert の中に仕様6.1の文言と「再試行」ボタンを表示し、詳細の見出し（vercel/next.js）は出ず、レベル1の見出し「リポジトリを表示できませんでした」が出る",
     async ({ error, texts }) => {
       getRepository.mockRejectedValue(error());
 
@@ -180,7 +180,15 @@ describe("詳細ページ", () => {
         expect(alert.getByText(text)).toBeInTheDocument();
       }
       expect(alert.getByRole("button", { name: "再試行" })).toBeInTheDocument();
-      expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+      expect(
+        screen.queryByRole("heading", { level: 1, name: "vercel/next.js" }),
+      ).toBeNull();
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "リポジトリを表示できませんでした",
+        }),
+      ).toBeInTheDocument();
     },
   );
 

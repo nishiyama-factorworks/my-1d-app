@@ -36,6 +36,9 @@ export default async function RepoDetailPage({
     }
     return (
       <main className="flex flex-1 flex-col items-center gap-6 p-8">
+        <h1 className="text-2xl font-semibold">
+          リポジトリを表示できませんでした
+        </h1>
         <ApiErrorView kind={e.kind} resetAt={e.resetAt} />
       </main>
     );
