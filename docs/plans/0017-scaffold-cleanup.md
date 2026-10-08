@@ -1,6 +1,6 @@
 # 0017: 雛形の未使用 SVG の整理 実装計画
 
-Status: in-progress                     <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                            <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #17
 - 対応する仕様: docs/specs/0017-scaffold-cleanup.md
@@ -120,7 +120,7 @@ Status: in-progress                     <!-- draft | in-progress | done  ※ Ses
     6. `listPublicFiles` で存在確認を外す → 「存在しないディレクトリで空配列」の前提テストが `ENOENT` で失敗（`public/` が無い状態で AC-1 も同じく落ちる）。
   - 完了条件: 新しいテストがすべて通り、既存テストは変更なしで通る。`pnpm typecheck`・`pnpm lint`・`pnpm test` PASS、`bash scripts/verify.sh --quick` PASS、`public/` が無い状態で `pnpm build` PASS。コミットは `test:` と `chore:` を分けず 1 コミット（例: `chore(public): 雛形の未使用 SVG を削除し参照の検査を追加する` + `Refs #17`）。
 
-- [ ] **T2: 文書の更新・最終確認・Issue 本文の修正**
+- [x] **T2: 文書の更新・最終確認・Issue 本文の修正**
   - 対応 AC: なし（文書・検証。AC-1〜AC-3 の総合確認）
   - 先に書くテスト: なし（コードを変えない）
   - 実装対象: `docs/architecture.md` 5 節に 1 行（Q7。例:「静的ファイル（0017）: `public/` に置くファイルは、名前が `app/` `features/` `lib/` `components/` のコード・CSS、`next.config.ts`、`package.json` のどこかに現れること。現在 `public/` は空（Git 上は存在しない）。動的なパスや外部からの直接リンク用は理由つきで許可リストに載せる。`tests/foundation/public-assets-referenced.test.ts` が検査する」の趣旨）、本計画の進捗メモ
@@ -192,3 +192,4 @@ Status: in-progress                     <!-- draft | in-progress | done  ※ Ses
 - 2026-10-09: 計画作成（draft）。未着手。人間の承認（特に Q2・Q3・Q6・Q8）を得てから T1 に入る。`/issue split` はせず 1 PR で進める想定（2 タスク）。
 
 - 2026-10-09: 人間が計画を承認（Q1〜Q10 すべて推奨どおり）。Status: in-progress。T1 から着手。
+- 2026-10-09: T1・T2 完了、レビュー済み。reviewer は Approve（Critical・Major なし）。`security-reviewer` は省いた（Q9。依存・入力・外部連携に触れない）。Issue #17 の本文は、仕様の承認時に人間の承認を得て `gh issue edit` で直した（範囲を SVG の整理だけにし、`metadata` と `lang` は 0011 で実施済みと追記）。reviewer の Minor・Nit に対応: ベース名照合の限界をテストの冒頭コメントと仕様 8 節に追記、前提テスト「public/ にファイルがある間は空でない」を空のサブディレクトリで誤って失敗しない形に直した（`collectFiles` で判定）、境界の文字クラス `[A-Za-z0-9_.-]` を固定する陰性ケース（`my-logo.svg`・`old.logo.svg`・`a_logo.svg`）を追加（`-`・`.`・`_` を外す 3 つの変異で検出）、不要な `sort` と `as Source[]` を除去。許可リストに古い項目が残っても検出できない点は、仕様外のため見送り（許可リストは現在空）。`bash scripts/verify.sh`（full）は PASS（`public/` が無い状態でビルドが通る）。

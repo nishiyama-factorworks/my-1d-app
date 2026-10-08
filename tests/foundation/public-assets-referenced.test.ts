@@ -2,6 +2,7 @@
 //
 // public/ の各ファイルが、コード・CSS・設定から参照されていることを検査する（仕様 0017）。
 // 限界: 参照の判定は文字列検索なので、コメント中の出現も参照として数える。
+// 照合はベース名（拡張子つき）で行うため、サブディレクトリが違う同名ファイルは区別しない。
 // 動的に組み立てるパスや外部サイトからの直接リンク用のファイルは検出できないため、
 // 理由つきで ALLOWLIST に載せる。
 import {
@@ -20,6 +21,7 @@ import { afterEach, describe, expect, it } from "vitest";
 const root = path.resolve(import.meta.dirname, "../..");
 
 type Source = { path: string; text: string };
+const noSources: Source[] = [];
 type AllowlistEntry = { path: string; reason: string };
 
 /** 参照が無くても許可するファイル。動的パス・外部リンク用などを理由つきで載せる */
@@ -152,7 +154,7 @@ describe("走査の前提", () => {
 
     const files = listPublicFiles(dir, dir);
 
-    expect([...files].sort()).toEqual(["a.png", "sub/b.svg"]);
+    expect(files).toEqual(["a.png", "sub/b.svg"]);
   });
 
   it("AC-1（前提）: listPublicFiles は存在しないディレクトリで空配列を返す", () => {
@@ -163,15 +165,13 @@ describe("走査の前提", () => {
 
   it("AC-1（前提）: public/ にファイルがある間は listPublicFiles(public) が空でない", () => {
     const publicDir = path.join(root, "public");
-    const entries = existsSync(publicDir) ? readdirSync(publicDir) : [];
-
     const files = listPublicFiles(publicDir);
 
-    if (entries.length > 0) {
+    if (existsSync(publicDir) && collectFiles(publicDir).length > 0) {
       expect(files.length).toBeGreaterThan(0);
     } else {
-      // 全削除後: public/ が無い、または空であることを明示する
-      expect(entries).toEqual([]);
+      // 全削除後: public/ が無い、またはファイルが 1 つも無いことを明示する
+      expect(existsSync(publicDir) ? collectFiles(publicDir) : []).toEqual([]);
       expect(files).toEqual([]);
     }
   });
@@ -216,7 +216,7 @@ describe("判定", () => {
   });
 
   it.each([
-    { label: "参照元が空", sources: [] as Source[] },
+    { label: "参照元が空", sources: noSources },
     {
       label: "拡張子違いの logo.png",
       sources: [{ path: "app/x.tsx", text: '"/logo.png"' }],
@@ -232,6 +232,18 @@ describe("判定", () => {
     {
       label: "logo-dark.svg",
       sources: [{ path: "app/x.tsx", text: '"/logo-dark.svg"' }],
+    },
+    {
+      label: "my-logo.svg（直前が -）",
+      sources: [{ path: "app/x.tsx", text: '"/my-logo.svg"' }],
+    },
+    {
+      label: "old.logo.svg（直前が .）",
+      sources: [{ path: "app/x.tsx", text: '"/old.logo.svg"' }],
+    },
+    {
+      label: "a_logo.svg（直前が _）",
+      sources: [{ path: "app/x.tsx", text: '"/a_logo.svg"' }],
     },
     {
       label: "logoXsvg（. は任意の 1 文字ではない）",
