@@ -59,6 +59,10 @@ GitHub REST APIをサーバー側から呼び、アプリ内の型に変換し�
 | AC-13d | 個別APIが、公開と確認できない応答（`private` が `false` でない、または `visibility` が `public` でない）を返す | `getRepository` を呼ぶ | `NOT_FOUND` として失敗する |
 | AC-13e | 個別APIの `owner.avatar_url` が `https` でない・ホストが `avatars.githubusercontent.com` でない・ユーザー名/パスワード/ポートを含む。または `html_url` が `https` でない・ホストが `github.com` でない・ユーザー名/パスワード/ポートを含む | `getRepository` を呼ぶ | `UPSTREAM` として失敗する。成功時は検証した正規化後のURLを返す |
 | AC-23e | HTTP層に、`https://api.github.com` 以外のオリジンに解決されるパス（`//evil.example/x`、絶対URLなど）を渡す | API呼び出しを行う | `fetch` を呼ばずに `VALIDATION` として失敗する（トークンを外部ホストに送らない） |
+| AC-23f | 環境変数 `GITHUB_API_BASE_URL` が `http://127.0.0.1:4010` または `http://localhost:4010`（ループバック。仕様 0013） | HTTP層でAPIを呼ぶ | `fetch` が、そのオリジンの URL で呼ばれる |
+| AC-23g | `GITHUB_API_BASE_URL` が、オリジンのみの `http://127.0.0.1:<ポート>` / `http://localhost:<ポート>` 以外（ループバック以外、URL として不正、パス・クエリ・フラグメント・認証情報を含む、https、ポートなし、など） | HTTP層でAPIを呼ぶ | `fetch` を呼ばずに `VALIDATION` として失敗する |
+| AC-23h | `GITHUB_API_BASE_URL` がループバックで、`GITHUB_TOKEN` も設定されている | HTTP層でAPIを呼ぶ | `Authorization` ヘッダを付けない |
+| AC-23i | `GITHUB_API_BASE_URL` が未設定または空文字 | HTTP層でAPIを呼ぶ | `https://api.github.com` を使う（AC-23a〜AC-23e が変わらない） |
 | AC-24f | `x-ratelimit-reset` が安全な整数として読めない値（桁数が極端に大きい等） | `RATE_LIMIT` に分類する | リセット時刻は保持されない（`Invalid Date` を保持しない） |
 | AC-13c | `owner` が英数字とハイフン以外を含む・1〜39文字でない、または `repo` が英数字と `.` `_` `-` 以外を含む・1〜100文字でない・`.` か `..` である | `getRepository` を呼ぶ | `fetch` を呼ばずに `NOT_FOUND` として失敗する |
 
@@ -104,3 +108,4 @@ GitHub REST APIをサーバー側から呼び、アプリ内の型に変換し�
 | 2026-10-07 | セキュリティ再レビューの指摘への対応として AC-5f・5g・13d・13e を改定（`private` 判定を安全側に、avatar のホストを `avatars.githubusercontent.com` に限定、正規化後のURLを返し userinfo・ポート付きを拒否）。AC-23e が公開関数から到達しない旨を注記 | security-reviewer の再レビューの指摘を人間が採用。「private 未設定は成功」とする従来の挙動（旧AC-5f・13d）を変更する仕様変更 |
 | 2026-10-07 | レビュー指摘への対応として AC-5e〜5g、AC-13d・13e、AC-23e、AC-24f と、非機能（private対策、エラー本文の破棄、`q` 上限の根拠）を追加。未決事項の関数名等を確定済みに更新 | security-reviewer の指摘（private リポジトリの漏えい、URL 検証、オリジン検証、`q` 長さ、`Invalid Date`）を人間が採用 |
 | 2026-10-07 | 入力検証の AC-5c・AC-5d・AC-13c を追加 | 計画段階で、`q` 空・`page`/`perPage` 不正・`owner`/`repo` のパス操作（`..` 等）の扱いが仕様に無いと判明し、人間が採用を決定 |
+| 2026-10-09 | AC-23f〜AC-23i（接続先の環境変数による上書き。ループバック限定、上書き中はトークンを送らない）を追加 | 仕様 0013（E2E、Issue #13）の偽のAPIのため |

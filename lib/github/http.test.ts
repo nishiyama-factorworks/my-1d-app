@@ -322,3 +322,137 @@ describe("githubGet: キャッシュの再検証時間", () => {
     },
   );
 });
+
+describe("githubGet: 接続先の上書き（GITHUB_API_BASE_URL）", () => {
+  it.each([
+    "http://127.0.0.1:4010",
+    "http://localhost:4010",
+    "http://127.0.0.1:4010/",
+  ])(
+    "AC-31c（AC-23f）: %s のとき、そのオリジンに従来どおりのパスとクエリで fetch する",
+    async (base) => {
+      vi.stubEnv("GITHUB_API_BASE_URL", base);
+      const fetchMock = stubFetch(async () => jsonResponse({}));
+
+      await githubGet("search", "/search/repositories", {
+        q: "react",
+        page: "2",
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const url = calledUrl(fetchMock);
+      expect(url.origin).toBe(new URL(base).origin);
+      expect(url.pathname).toBe("/search/repositories");
+      expect(url.searchParams.get("q")).toBe("react");
+      expect(url.searchParams.get("page")).toBe("2");
+    },
+  );
+
+  it.each([
+    {
+      label: "https://example.com（ループバック以外）",
+      value: "https://example.com",
+    },
+    {
+      label: "http://192.168.0.1:4010（ループバック以外）",
+      value: "http://192.168.0.1:4010",
+    },
+    { label: "abc（URL として不正）", value: "abc" },
+    {
+      label: "http://127.0.0.1:4010/x（パスあり）",
+      value: "http://127.0.0.1:4010/x",
+    },
+    {
+      label: "http://127.0.0.1:4010?x=1（クエリあり）",
+      value: "http://127.0.0.1:4010?x=1",
+    },
+    {
+      label: "http://user:pass@127.0.0.1:4010（認証情報あり）",
+      value: "http://user:pass@127.0.0.1:4010",
+    },
+    {
+      label: "http://user@127.0.0.1:4010（ユーザー名だけ）",
+      value: "http://user@127.0.0.1:4010",
+    },
+    {
+      label: "http://:pass@127.0.0.1:4010（パスワードだけ）",
+      value: "http://:pass@127.0.0.1:4010",
+    },
+    {
+      label: "http://127.0.0.1:4010#x（フラグメントあり）",
+      value: "http://127.0.0.1:4010#x",
+    },
+    {
+      label: "https://127.0.0.1:4010（http 以外）",
+      value: "https://127.0.0.1:4010",
+    },
+    { label: "http://127.0.0.1（ポートなし）", value: "http://127.0.0.1" },
+    {
+      label: "http://localhost.example.com:4010（似たホスト）",
+      value: "http://localhost.example.com:4010",
+    },
+    {
+      label: "http://[::1]:4010（仕様に無いループバック表記）",
+      value: "http://[::1]:4010",
+    },
+  ])(
+    "AC-31d（AC-23g）: $label のとき fetch を呼ばずに VALIDATION で失敗する",
+    async ({ value }) => {
+      vi.stubEnv("GITHUB_API_BASE_URL", value);
+      vi.stubEnv("GITHUB_TOKEN", "test-token-dummy");
+      const fetchMock = stubFetch(async () => jsonResponse({}));
+
+      const e = await catchError(
+        githubGet("search", "/search/repositories", { q: "react" }),
+      );
+
+      expect(isGitHubApiError(e)).toBe(true);
+      expect(e).toMatchObject({ kind: "VALIDATION" });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect((e as Error).message).not.toContain(value);
+    },
+  );
+
+  it.each(["//evil.example/x", "https://api.github.com/x"])(
+    "AC-31d（AC-23e の維持）: 上書き中に %s を path に渡すと fetch を呼ばず VALIDATION で失敗する",
+    async (path) => {
+      vi.stubEnv("GITHUB_API_BASE_URL", "http://127.0.0.1:4010");
+      const fetchMock = stubFetch(async () => jsonResponse({}));
+
+      const e = await catchError(githubGet("repo", path));
+
+      expect(isGitHubApiError(e)).toBe(true);
+      expect(e).toMatchObject({ kind: "VALIDATION" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("AC-31e（AC-23h）: 上書き中は GITHUB_TOKEN があっても Authorization を付けない", async () => {
+    vi.stubEnv("GITHUB_API_BASE_URL", "http://127.0.0.1:4010");
+    vi.stubEnv("GITHUB_TOKEN", "test-token-dummy");
+    const fetchMock = stubFetch(async () => jsonResponse({}));
+
+    await githubGet("repo", "/repos/vercel/next.js");
+
+    const headers = calledHeaders(fetchMock);
+    expect(headers.has("Authorization")).toBe(false);
+    expect(headers.get("Accept")).toBe("application/vnd.github+json");
+    expect(headers.get("X-GitHub-Api-Version")).toBe("2022-11-28");
+  });
+
+  it.each([undefined, ""])(
+    "AC-31f（AC-23i）: GITHUB_API_BASE_URL が %j のとき https://api.github.com を使い、GITHUB_TOKEN があれば Authorization を付ける",
+    async (value) => {
+      vi.stubEnv("GITHUB_API_BASE_URL", value);
+      vi.stubEnv("GITHUB_TOKEN", "test-token-dummy");
+      const fetchMock = stubFetch(async () => jsonResponse({}));
+
+      await githubGet("repo", "/repos/vercel/next.js");
+
+      expect(calledUrl(fetchMock).origin).toBe("https://api.github.com");
+      expect(calledHeaders(fetchMock).get("Authorization")).toBe(
+        "Bearer test-token-dummy",
+      );
+    },
+  );
+});
