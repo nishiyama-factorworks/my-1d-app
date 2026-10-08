@@ -15,6 +15,7 @@
 | データ保存     | <未定>                                        |                    |
 | 認証           | <未定>                                        |                    |
 | テスト         | Vitest + Testing Library + jsdom（単体/結合） | 仕様 0002          |
+| E2E（任意）    | Playwright（`@playwright/test`）+ 偽の GitHub API | 仕様 0013、ADR 0006 |
 | デプロイ先     | <未定>                                        |                    |
 
 ## 3. 構成と責務
@@ -38,6 +39,7 @@
 - `lib/`: 横断ユーティリティ
 - `lib/github/`: GitHub REST API の呼び出し層。GitHub API は**ここだけ**が呼ぶ。公開面は `lib/github/index.ts`（`searchRepositories` / `getRepository` / `GitHubApiError` と型）
 - `tests/`: E2E・結合テストの共有ヘルパ、構成検査テスト
+- `e2e/`（0013）: Playwright のシナリオ（`*.spec.ts`）と偽の GitHub API（`e2e/mock-api/server.ts`）。`pnpm test:e2e` で実行する（`bash scripts/verify.sh` には含めない。CI はリポジトリ変数 `RUN_E2E` が `true` のときだけ）。Vitest は `e2e/` を実行しない
 
 ## 4. データモデル
 
@@ -57,7 +59,7 @@
 - 定数の一本化（0018）: 1 ページの件数 30（`SEARCH_PER_PAGE`）とキーワードの上限 256（`SEARCH_KEYWORD_MAX_LENGTH`）は `lib/search/constants.ts` だけで定義し、`lib/github/client.ts` が `@/lib/search/constants` から import する。依存の向きは `lib/github/` → `lib/search/constants.ts` のみで、`lib/search/` は `lib/github/` を import しない（`lib/search/` をクライアントで使えるまま保つため）。`MAX_PER_PAGE`（API の上限 100）、`OWNER_PATTERN` `REPO_PATTERN` など GitHub API 固有の制約は `lib/github/` に残す。重複と依存の向きは `tests/foundation/search-constants-single-source.test.ts` が検査する
 - 取得のキャッシュ（0011、ADR 0005）: `lib/github/http.ts` の `fetch` に `next: { revalidate }` を渡す（検索 300 秒・詳細 600 秒）。`cache` は指定しない。200 の応答だけが保存され、キーは URL とリクエストヘッダ（トークンを含む）ごと。保存されるのは公開リポジトリの情報だけ（非公開と確認できないものは 0003 で返さない）。`searchParams` を読む動的ルートでも効くことを実機で確認済み
 - ページタイトル（0011）: ルートレイアウトの `metadata.title` は `{ default: アプリ名, template: "%s | アプリ名" }`、`lang="ja"`。`template` は同じセグメントの `page.tsx`（トップ）には効かないため、トップは `generateMetadata` で `title.absolute` の完成形（`<q> の検索結果 | アプリ名`、`q` なしはアプリ名のみ）を返す。詳細は `generateMetadata` で URL の `params` から `<owner>/<repo>` を返し（API を呼ばない）、`template` が `| アプリ名` を付ける。404 とエラーはルートの `default`（アプリ名）になる
-- GitHub API 層の防御策: 宛先オリジンは `api.github.com` に固定。公開と確認できないリポジトリは返さない。レスポンスの `avatar_url` / `html_url` は https かつ GitHub のホストのみ許可する
+- GitHub API 層の防御策: 宛先オリジンは `api.github.com` に固定（例外: 環境変数 `GITHUB_API_BASE_URL` が `http://127.0.0.1:<ポート>` / `http://localhost:<ポート>` のときだけ、そのオリジンに上書きする。E2E 専用。それ以外の値は `VALIDATION`、上書き中は `Authorization` を付けない。0013、ADR 0006）。公開と確認できないリポジトリは返さない。レスポンスの `avatar_url` / `html_url` は https かつ GitHub のホストのみ許可する
 - 外部入力の検証: サーバ側でスキーマ検証（zod 等）
 - 認証・認可: <方針>
 - エラー形式（Route Handler の応答）: `{ error: { code, message } }`。GitHub API 層のエラーは上の `GitHubApiError`
@@ -65,6 +67,8 @@
 ## 6. 環境変数
 
 キー名のみ `.env.example` に記載。値は `.env.local`（Git 管理外）。
+
+- `GITHUB_API_BASE_URL` は E2E 専用（Playwright の `webServer` が設定する）。`.env.example` に書かず、本番の環境に設定しない。
 
 ## 7. 非機能要件
 
