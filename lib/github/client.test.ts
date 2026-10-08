@@ -195,6 +195,30 @@ describe("getRepository", () => {
   });
 });
 
+describe("キャッシュの再検証時間", () => {
+  it("AC-29a: searchRepositories は fetch の next.revalidate に 300 を渡す", async () => {
+    const mock = stubFetch(() => jsonResponse(searchBody()));
+
+    await searchRepositories({ q: "react" });
+
+    expect(mock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ next: { revalidate: 300 } }),
+    );
+  });
+
+  it("AC-29b: getRepository は fetch の next.revalidate に 600 を渡す", async () => {
+    const mock = stubFetch(() => jsonResponse(repoBody()));
+
+    await getRepository("vercel", "next.js");
+
+    expect(mock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ next: { revalidate: 600 } }),
+    );
+  });
+});
+
 describe("トークンとヘッダ", () => {
   const calls = [
     [

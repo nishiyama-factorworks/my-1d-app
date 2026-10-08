@@ -133,7 +133,8 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 
 ## 3. タスク（1 タスク = 1 コミットの大きさ）
 
-- [ ] **T1: 検索・詳細の取得に再検証時間を設定する**
+- [x] **T1: 検索・詳細の取得に再検証時間を設定する**
+  - 進捗: RED（新規 8 件中 4 件失敗。`next` が `undefined`。`cache`・`signal` の補強 4 件は最初から通る）→ GREEN（verify --quick PASS、712 件）。変異確認: 検索と詳細の値の入れ替え／`cache: "no-store"` の追加／`next` を検索だけに付ける／`signal` を外す／`revalidate` を 0 にする、の 5 つすべてで検出。ADR 0005 を `Status: Proposed` で下書き（「実機確認」の節は「未確認（T2 で記録する）」）。
   - 対応 AC: AC-29a、AC-29b、AC-29c（ADR の下書き）
   - 先に書くテスト:
     - `lib/github/http.test.ts`（`describe("githubGet: キャッシュの再検証時間")`）
