@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { GitHubApiError } from "@/lib/github/errors";
 import type {
@@ -28,8 +28,21 @@ beforeEach(() => {
 });
 
 describe("renderSearchContent", () => {
-  it("AC-4a（仕様 0006 6.1、T5 で置き換え）: 検索 API が GitHubApiError で失敗したとき、renderSearchContent は同じエラーで reject される", async () => {
-    const error = new GitHubApiError("RATE_LIMIT");
+  // 仕様変更 0010: 0006 6.1 の暫定挙動（GitHubApiError は reject）を、AC-18a〜19b の表示に置き換えた。
+  it("AC-18a〜19b（仕様 0010 で 0006 6.1 を置き換え）: GitHubApiError では reject せず、エラー表示を返す", async () => {
+    searchRepositories.mockRejectedValue(new GitHubApiError("RATE_LIMIT"));
+
+    render(await renderSearchContent({ q: "react", page: 1 }));
+
+    const alert = within(screen.getByRole("alert"));
+    expect(
+      alert.getByText("GitHub API の利用制限に達しました"),
+    ).toBeInTheDocument();
+    expect(alert.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+  });
+
+  it("AC-19e の前提: GitHubApiError 以外の例外は同じインスタンスのまま reject される", async () => {
+    const error = new Error("unexpected");
     searchRepositories.mockRejectedValue(error);
 
     await expect(renderSearchContent({ q: "react", page: 1 })).rejects.toBe(

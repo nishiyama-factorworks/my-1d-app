@@ -1,4 +1,7 @@
 import { use, type ReactNode } from "react";
+import { ApiErrorView } from "@/features/state-views/components/api-error-view";
+import { EmptyResults } from "@/features/search/components/empty-results";
+import { isGitHubApiError } from "@/lib/github/errors";
 import { OutOfRangeNotice } from "@/features/search/components/out-of-range-notice";
 import { Pagination } from "@/features/search/components/pagination";
 import { SearchResults } from "@/features/search/components/search-results";
@@ -26,16 +29,24 @@ export async function renderSearchContent({
     return <OutOfRangeNotice q={q} target={{ kind: "first" }} />;
   }
 
-  // GitHubApiError は握りつぶさずそのまま投げる。専用のエラー表示は 0010 で作る。
-  const result = await searchRepositories({
-    q,
-    page,
-    perPage: SEARCH_PER_PAGE,
-  });
-  const maxPage = calculateMaxPage(result.totalCount);
+  let result;
+  try {
+    result = await searchRepositories({ q, page, perPage: SEARCH_PER_PAGE });
+  } catch (error) {
+    // GitHubApiError だけを種別ごとの表示にする。想定外の例外は握りつぶさず投げる。
+    if (isGitHubApiError(error)) {
+      return <ApiErrorView kind={error.kind} resetAt={error.resetAt} />;
+    }
+    throw error;
+  }
 
-  // 総件数 0 のときは page に関わらず範囲外にせず、0 件として表示する
-  if (result.totalCount >= 1 && page > maxPage) {
+  // 総件数 0 のときは page に関わらず範囲外にせず、0 件の案内を表示する
+  if (result.totalCount === 0) {
+    return <EmptyResults q={q} />;
+  }
+
+  const maxPage = calculateMaxPage(result.totalCount);
+  if (page > maxPage) {
     return <OutOfRangeNotice q={q} target={{ kind: "last", page: maxPage }} />;
   }
 

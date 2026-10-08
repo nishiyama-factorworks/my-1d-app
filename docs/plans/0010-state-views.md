@@ -96,6 +96,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 | `app/repos/[owner]/[repo]/page.test.tsx` の `it.each`: `AC-20b: getRepository が $kind で失敗したとき notFound() を呼ばず、同じエラーをそのまま投げる`（4 種別） | 種別ごとの表示のテスト（AC-18a・18b・19a・19b。ページ関数が reject されず、`role="alert"` の中に固定文言と `再試行` が出る＝`notFound()` も呼ばれていない）に置き換える | 0008 AC-20b を 0010 の種別ごとの表示に置き換え（仕様 0008 の 10節 2026-10-08） |
 | `app/repos/[owner]/[repo]/page.test.tsx` の `AC-20b: GitHubApiError 以外の例外もそのまま投げる` | 変えない | 仕様 0008 AC-20b の注記どおり、`GitHubApiError` 以外は引き続きそのまま投げる |
 | `app/repos/[owner]/[repo]/page.test.tsx` の `next/navigation` | (f) の部分モックを足す。AC-20a のテストは変えない | `RetryButton` の `useRouter` のため |
+| `app/page.test.tsx` のエラー表示（AC-18a〜19c） | エラー表示の alert を `getErrorAlert()`（`<form>` の外にある `role="alert"` がちょうど 1 つであることを確かめて返す）で取り出す。期待値は不変 | 検索フォームに常設の空 `role="alert"`（`search-form.tsx`）があり `getByRole("alert")` が複数一致するため。`search-form.tsx` は変えない |
 
 ## 2. 影響範囲
 
@@ -171,7 +172,7 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `app/page.tsx`、`app/page.test.tsx`、`features/search/components/search-content.tsx`、`search-content.test.tsx`（4 ファイル）
   - 完了条件: 既存の `app/page.test.tsx` のテストが期待値を変えずにすべて通る（変えたのは `renderPage` の待ち方と、移したテスト 1 件だけ）。`pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T5: トップの0件・エラー表示**
+- [x] **T5: トップの0件・エラー表示**
   - 対応 AC: AC-17、AC-18a・18b・19a・19b・19c（トップ）、AC-19d（トップ、ページ単位）。0007 AC-9d の期待値の変更
   - 先に書くテスト:
     - `app/page.test.tsx`
@@ -329,4 +330,5 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
 - 2026-10-08: T2 完了。RED は仮実装（`<div />`）で 4 件中 3 件が失敗（`role="status"` が見つからない／文言の要素が見つからない）、残り 1 件（AC-17「含まない」）は計画どおり仮実装でも通過。GREEN は 4/4 通過、`verify.sh --quick` PASS。T2 に変異確認の指定は無いため未実施。
 - 2026-10-08: T3 完了。RED は仮実装（`ApiErrorView` = `<div />`）で 11 件中 7 件が失敗（`role="alert"` が見つからない 5 件、`再試行` ボタンが見つからない 2 件）、AC-19c の 4 件は計画どおり仮実装でも通過。GREEN は 11/11 通過、`verify.sh --quick` PASS。変異確認: (1) `resetAt` を無視 → AC-18a が失敗、(2) `refresh` を `push(location.href)` に → AC-19d が失敗、(3) UPSTREAM と NETWORK の文言取り違え → AC-19a×2・19b が失敗。いずれも元に戻し済み。
 - 2026-10-08: T4 完了。RED は search-content が仮実装（null）で 2/2 件失敗（reject されない／案内なし）、page は取得を待ち続けて AC-16a の「取得中」2 件がタイムアウト（残り 3 件は連鎖失敗）。GREEN 直後、遷移テスト 2 件が同期 `act` ではフォールバックを観測できず失敗したため（`key` ありでも再現。`await act(async …)` なら出る）、`app/page.test.tsx` の該当 `act` を async に変更（期待値は不変）。GREEN は 27/27 通過、`verify.sh --quick` PASS。変異確認: (1) `key` を外す → 遷移 2 件が失敗、(2) `key` を `q` のみ → `page` の 1 件だけ失敗、(3) ページで `await renderSearchContent` に戻す → 取得中系と遷移を含む 13 件が失敗。いずれも元に戻し済み。
+- 2026-10-08: T5 完了。RED は 13 件失敗（0 件で総ヒット件数が残る／`GitHubApiError` が reject される）。GREEN 後、トップのエラー表示 9 件が `getByRole("alert")` の複数一致（検索フォームの常設の空 alert と `ApiErrorView`）で失敗したため、人間の承認のうえ `app/page.test.tsx` に `getErrorAlert()` を追加（期待値は不変、`search-form.tsx` は不変）。GREEN は 102/102 通過、`verify.sh --quick` PASS。変異確認: (1) 全例外を `ApiErrorView` → `GitHubApiError` 以外の reject の 1 件が失敗、(2) 0 件の分岐を外す → AC-9d・AC-17 の 2 件が失敗、(3) 0 件の分岐を `page === 1` に限定 → AC-9d の 1 件が失敗、(4) `message` を表示 → AC-19c の 4 件が失敗。いずれも元に戻し済み。
 - 前提として読んだ申し送り: 0006 計画（0件・読み込み中・`<Suspense>` への移行）、0007 計画（範囲外の 2 段の判定を一緒に移す、0件は AC-9d の分岐の中、257 文字の `q` の 500、先読みの再確認）、0008 計画（`loading.tsx` と先読み、ストリーミング時の 404 が 200 になる点）。いずれも本計画の 1 節・T4〜T7・T9 に反映した。
