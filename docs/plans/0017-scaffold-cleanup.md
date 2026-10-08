@@ -83,7 +83,10 @@ Status: in-progress                     <!-- draft | in-progress | done  ※ Ses
 
 > 分け方の考え方: コミット前に `verify.sh --quick` の PASS が必要なため、RED のままのテストはコミットしない。AC-1・AC-2 は SVG を消すまで RED なので、テストと削除を同じコミット（T1）に入れる。T2 はコードを変えない文書・検証・レビュー。別案は Q8。
 
-- [ ] **T1: 構成検査テストの追加と雛形 SVG 5 つの削除（AC-1・AC-2 の RED → GREEN、AC-3）**
+- [x] **T1: 構成検査テストの追加と雛形 SVG 5 つの削除（AC-1・AC-2 の RED → GREEN、AC-3）**
+  - 進捗: RED 1（判定・列挙を「空配列を返す」仮実装）で 27 件中 17 件が失敗 → 本実装で RED 2（SVG が残った状態）6 件失敗: AC-1 が `public/file.svg`・`globe.svg`・`next.svg`・`vercel.svg`・`window.svg` の 5 つ、AC-2 の 5 件が「存在する」（`expected true to be false`）→ SVG 5 つを `git rm` して GREEN（27 件 PASS）。`public/` ディレクトリは Git の追跡から外れて無くなった（`.gitkeep` は置かない。Q6）。
+  - AC-3 の確認: 変更は新規テスト 1 件と SVG 5 つの削除だけ（既存のテストファイルの変更は 0 件）。`public/` が無い状態で `bash scripts/verify.sh`（full）が PASS（`pnpm build` で `/` と `/repos/[owner]/[repo]` が動的 `ƒ` のまま）。
+  - 変異確認（12 個、すべて検出または期待どおり）: `next.svg` を戻す／`public/unused.txt` を置く（失敗）→ 許可リストに足す（通る）→ `reason` を空にする（失敗）／`app/page.test.tsx` にだけ参照を書く（失敗のまま。テストファイルを参照元にしていない）→ `app/layout.tsx` に書く（通る）／参照元から `app/` を外す／拡張子から `css` を外す／境界の判定を外す／エスケープを外す／列挙の存在確認を外す（2 か所）。
   - 対応 AC: AC-1、AC-2、AC-3
   - 先に書くテスト: `tests/foundation/public-assets-referenced.test.ts`
     - `describe("走査の前提")`
