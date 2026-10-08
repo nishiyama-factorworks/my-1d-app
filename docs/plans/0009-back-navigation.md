@@ -169,7 +169,9 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `features/search/lib/repo-path.ts`、`repo-path.test.ts`、`features/search/components/search-results.tsx`、`search-results.test.tsx`、`search-content.tsx`、`app/page.test.tsx`（6 ファイル。目安の 5 を 1 つ超えるが、3 つはテストで、`search-content.tsx` は 1 行の変更。分けると `repoPathFromFullName` の引数の変更でコミット単位の型チェックが通らなくなるため、1 コミットにする）
   - 完了条件: 既存テストは 1.2 (e) の変更以外の期待値を変えずに通る。`pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: 詳細ページの「トップへ戻る」に戻り先を渡す**
+- [x] **T4: 詳細ページの「トップへ戻る」に戻り先を渡す**
+  - 進捗: RED（40 件中 6 件失敗。`href` が `/` のまま）→ GREEN（verify --quick PASS、703 件）。変異確認: `backHref` を使わず `/` に戻す／`buildBackPath` を通さず生の連結／検索条件を `getRepository` に渡す／戻り先を常に `/`／`page` を捨てる、の 5 つすべてで検出。
+  - 既存テストの変更（計画 1.2 (e) のとおり。期待値は弱めていない）: `repo-detail-view.test.tsx` は全 `render` を `renderView(repo, backHref = "/")` に置き換え、AC-11c は `backHref="/"` を明示。`page.test.tsx` は `callPage` / `renderPage` に第 2 引数 `searchParams` を足した（既存テストは引数を変えずに通る）。
   - 対応 AC: AC-15a、AC-15b、AC-15c（ページ単位の代表例）、AC-15d（詳細側）、AC-15f
   - 先に書くテスト:
     - `features/repo-detail/components/repo-detail-view.test.tsx`（1.2 (e) のヘルパに置き換え）:

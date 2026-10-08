@@ -50,15 +50,21 @@ afterEach(() => {
 
 // async な Server Component は JSX としては描画できないため、
 // ページ関数を直接呼んで await し、返った要素を描画する。
-function callPage(params: { owner: string; repo: string }) {
+function callPage(
+  params: { owner: string; repo: string },
+  searchParams: Record<string, string | string[] | undefined> = {},
+) {
   return Page({
     params: Promise.resolve(params),
-    searchParams: Promise.resolve({}),
+    searchParams: Promise.resolve(searchParams),
   });
 }
 
-async function renderPage(params: { owner: string; repo: string }) {
-  render(await callPage(params));
+async function renderPage(
+  params: { owner: string; repo: string },
+  searchParams: Record<string, string | string[] | undefined> = {},
+) {
+  render(await callPage(params, searchParams));
 }
 
 const NOT_FOUND_DIGEST = "NEXT_HTTP_ERROR_FALLBACK;404";
@@ -227,5 +233,126 @@ describe("詳細ページ", () => {
     await expect(callPage({ owner: "vercel", repo: "next.js" })).rejects.toBe(
       error,
     );
+  });
+
+  describe("トップへ戻る（0009）", () => {
+    const target = { owner: "vercel", repo: "next.js" };
+
+    function backHrefOf() {
+      return screen
+        .getByRole("link", { name: "トップへ戻る" })
+        .getAttribute("href");
+    }
+
+    it("AC-15a: /repos/vercel/next.js?q=react&page=3 のとき「トップへ戻る」の href が /?q=react&page=3 である", async () => {
+      await renderPage(target, { q: "react", page: "3" });
+
+      expect(
+        screen.getByRole("link", { name: "トップへ戻る" }),
+      ).toHaveAttribute("href", "/?q=react&page=3");
+    });
+
+    it("AC-15b: クエリなしで直接開いたとき「トップへ戻る」の href が / である", async () => {
+      await renderPage(target, {});
+
+      expect(
+        screen.getByRole("link", { name: "トップへ戻る" }),
+      ).toHaveAttribute("href", "/");
+    });
+
+    it.each([
+      {
+        label: "page=abc",
+        searchParams: { q: "react", page: "abc" },
+        expected: "/?q=react&page=1",
+      },
+      {
+        label: "q=//evil.example",
+        searchParams: { q: "//evil.example" },
+        expected: "/?q=%2F%2Fevil.example&page=1",
+      },
+      {
+        label: "q=https://evil.example/",
+        searchParams: { q: "https://evil.example/" },
+        expected: "/?q=https%3A%2F%2Fevil.example%2F&page=1",
+      },
+      {
+        label: "257 文字の q",
+        searchParams: { q: "a".repeat(257) },
+        expected: "/",
+      },
+      {
+        label: "全角空白のみの q（page=3）",
+        searchParams: { q: "　", page: "3" },
+        expected: "/",
+      },
+    ])(
+      'AC-15c: クエリが $label のとき「トップへ戻る」の href が $expected で、"/" で始まり "//" で始まらない',
+      async ({ searchParams, expected }) => {
+        await renderPage(target, searchParams);
+
+        const href = backHrefOf();
+        expect(href).toBe(expected);
+        expect(href?.startsWith("/")).toBe(true);
+        expect(href?.startsWith("//")).toBe(false);
+      },
+    );
+
+    it('AC-15d: q が "日本語 & react"・page "2" のとき href が /?q=%E6%97%A5%E6%9C%AC%E8%AA%9E+%26+react&page=2 で、読み戻すと q が "日本語 & react" になる', async () => {
+      await renderPage(target, { q: "日本語 & react", page: "2" });
+
+      const href = backHrefOf();
+      expect(href).toBe("/?q=%E6%97%A5%E6%9C%AC%E8%AA%9E+%26+react&page=2");
+      const url = new URL(href ?? "", "http://localhost");
+      expect(url.searchParams.get("q")).toBe("日本語 & react");
+      expect(url.searchParams.get("page")).toBe("2");
+    });
+
+    it("AC-15f: 検索条件 q=react&page=3 が付いていても、getRepository は (vercel, next.js) だけで1回呼ばれ、見出しと6項目はクエリなしと同じ", async () => {
+      await renderPage(target, { q: "react", page: "3" });
+
+      expect(getRepository).toHaveBeenCalledTimes(1);
+      expect(getRepository).toHaveBeenCalledWith("vercel", "next.js");
+      expect(
+        screen.getByRole("heading", { level: 1, name: "vercel/next.js" }),
+      ).toBeInTheDocument();
+      const terms = screen.getAllByRole("term").map((e) => e.textContent);
+      const definitions = screen
+        .getAllByRole("definition")
+        .map((e) => e.textContent);
+      expect(terms.map((term, i) => [term, definitions[i]])).toEqual([
+        ["オーナー", "vercel"],
+        ["言語", "TypeScript"],
+        ["Star数", "1,234,567"],
+        ["Watcher数", "7"],
+        ["Fork数", "0"],
+        ["Issue数", "5"],
+      ]);
+    });
+
+    it("AC-15f（補強）: 検索条件が付いていても NOT_FOUND のときは notFound() になる", async () => {
+      getRepository.mockRejectedValue(
+        new GitHubApiError("NOT_FOUND", { status: 404 }),
+      );
+
+      await expect(
+        callPage(target, { q: "react", page: "3" }),
+      ).rejects.toMatchObject({ digest: NOT_FOUND_DIGEST });
+    });
+
+    it("仕様 6.1（補強）: 検索条件が付いていても API エラーの表示は変わらず、「トップへ戻る」リンクは出ない", async () => {
+      getRepository.mockRejectedValue(
+        new GitHubApiError("UPSTREAM", { status: 502 }),
+      );
+
+      await renderPage(target, { q: "react", page: "3" });
+
+      expect(
+        within(screen.getByRole("alert")).getByText(
+          "データの取得中にエラーが発生しました",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "トップへ戻る" })).toBeNull();
+    });
   });
 });

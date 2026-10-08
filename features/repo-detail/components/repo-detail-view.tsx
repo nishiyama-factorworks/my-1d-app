@@ -3,7 +3,13 @@ import Link from "next/link";
 import type { RepoDetail } from "@/lib/github/types";
 import { formatLanguage, formatNumber } from "@/lib/search/format";
 
-export function RepoDetailView({ repo }: { repo: RepoDetail }) {
+export function RepoDetailView({
+  repo,
+  backHref,
+}: {
+  repo: RepoDetail;
+  backHref: string;
+}) {
   const items: [string, string][] = [
     ["オーナー", repo.ownerLogin],
     ["言語", formatLanguage(repo.language)],
@@ -36,7 +42,7 @@ export function RepoDetailView({ repo }: { repo: RepoDetail }) {
         <a href={repo.htmlUrl} rel="noopener noreferrer" className="underline">
           GitHub で開く
         </a>
-        <Link href="/" className="underline">
+        <Link href={backHref} className="underline">
           トップへ戻る
         </Link>
       </div>

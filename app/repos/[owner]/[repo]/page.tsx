@@ -4,9 +4,11 @@ import { RepoDetailView } from "@/features/repo-detail/components/repo-detail-vi
 import { getRepository } from "@/lib/github";
 import { isGitHubApiError } from "@/lib/github/errors";
 import type { RepoDetail } from "@/lib/github/types";
+import { buildBackPath } from "@/lib/search/back-path";
 
 export default async function RepoDetailPage({
   params,
+  searchParams,
 }: PageProps<"/repos/[owner]/[repo]">) {
   const { owner, repo } = await params;
 
@@ -30,9 +32,12 @@ export default async function RepoDetailPage({
     );
   }
 
+  // 生の文字列を連結せず、検証済みの値から戻り先を組み立てる（オープンリダイレクト対策）。
+  const backHref = buildBackPath(await searchParams);
+
   return (
     <main className="flex flex-1 flex-col items-center gap-6 p-8">
-      <RepoDetailView repo={detail} />
+      <RepoDetailView repo={detail} backHref={backHref} />
     </main>
   );
 }
