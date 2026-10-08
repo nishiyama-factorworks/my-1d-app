@@ -1,21 +1,20 @@
 # 0017: 雛形の未使用 SVG の整理
 
-- Status: draft
+- Status: approved
 - 作成日: 2026-10-08
 - Issue: #17
-- 関連: `0002-setup-foundation.md`（基盤）、`0011-nonfunctional-polish.md`（`metadata` と `lang` を扱う）、依存: 0002
-
-> この仕様は、仕様番号を付与するための**下書き**。受け入れ条件は着手時（`/feature 17`）に確定し、人間の承認を得る。
->
-> 2026-10-08: `app/layout.tsx` の `metadata` と `lang` の修正は、仕様 0011（AC-26e・AC-28）に移した。この仕様は未使用の SVG の整理だけを扱う。Issue #17 のタイトル・本文には `metadata` が残っている（人間が更新を判断する）。
+- 関連: `0002-setup-foundation.md`（基盤）、`0011-nonfunctional-polish.md`（`metadata` と `lang` は 0011 で実施済み）、依存: 0002
 
 ## 1. 背景と目的
 
-Create Next App の雛形が `public/` に残っている（`next.svg`、`vercel.svg`、`file.svg`、`globe.svg`、`window.svg`）。プロジェクトの実態に合わせて、未使用のものを削除する。PR #14 の提案 P4 の一部。
+Create Next App の雛形が `public/` に残っている（`next.svg`、`vercel.svg`、`file.svg`、`globe.svg`、`window.svg`）。調べたところ、5 つとも `app/` `features/` `lib/` `components/` のコード・CSS・設定のどこからも参照されていない。プロジェクトの実態に合わせて削除する。PR #14 の提案 P4 の一部。
+
+あわせて、同じ種類の置き忘れを防ぐため、`public/` の各ファイルがコードから参照されていることを検査するテストを足す。
 
 ## 2. 対象ユーザーと前提
 
 - 開発者。画面の見た目と挙動は変わらない。
+- `app/layout.tsx` の `metadata` と `lang` は 0011 で直した（このタスクの範囲外）。
 
 ## 3. ユーザーストーリー
 
@@ -25,19 +24,23 @@ Create Next App の雛形が `public/` に残っている（`next.svg`、`vercel
 
 ### 4.1 やること
 
-- `public/` の雛形 SVG（`next.svg`、`vercel.svg`、`file.svg`、`globe.svg`、`window.svg`）のうち、未参照のものを削除する。
+- `public/` の雛形 SVG 5 つ（`next.svg`、`vercel.svg`、`file.svg`、`globe.svg`、`window.svg`）を削除する。
+- `public/` の各ファイルが、コードから参照されていることを検査する構成検査テスト（`tests/foundation/`）を追加する。
+- Issue #17 の本文を範囲に合わせて直す（`metadata` と `lang` は 0011 で実施済みと追記し、要望を SVG の整理だけにする。タイトルは直し済み）。
 
 ### 4.2 やらないこと（Non-goals）
 
-- `app/layout.tsx` の `metadata` と `lang` の修正（0011 で行う）
+- `app/layout.tsx` の `metadata` と `lang` の修正（0011 で実施済み）
 - 検索・詳細などの画面機能
-- ファビコンの差し替え
+- ファビコン（`app/favicon.ico`）の差し替え。`app/` にあるファイルで、`public/` の検査の対象外
 
-## 5. 受け入れ条件（案。着手時に確定する）
+## 5. 受け入れ条件（テストに直訳できる粒度で）
 
-| ID   | Given                         | When                     | Then                                             |
-| ---- | ----------------------------- | ------------------------ | ------------------------------------------------ |
-| AC-1 | `public/` の雛形 SVG を調べる | コード内の参照を検索する | 参照されていない SVG が `public/` に残っていない |
+| ID | Given | When | Then |
+| --- | --- | --- | --- |
+| AC-1 | `public/` 配下の全ファイル | 各ファイルの名前が、コードから参照されているかを調べる | すべてのファイルについて、ファイル名（拡張子つき）が `app/` `features/` `lib/` `components/` のコード（`.ts` `.tsx` `.mjs` `.js` `.css`）、`next.config.ts`、`package.json` のいずれかに文字列として現れる。参照が無いファイルがあれば、そのパスを失敗メッセージに出す。理由つきで許可リストに載せたファイルは対象外にできる（現在の許可リストは空） |
+| AC-2 | 雛形の SVG 5 つ | `public/` を調べる | `next.svg`、`vercel.svg`、`file.svg`、`globe.svg`、`window.svg` が存在しない |
+| AC-3 | 画面とビルド | 既存のテストとビルドを実行する | `pnpm test` と `pnpm build` が、既存のテストの期待値を変えずに通る（画面の見た目と挙動は変わらない） |
 
 ## 6. 画面・API の契約
 
@@ -49,11 +52,11 @@ Create Next App の雛形が `public/` に残っている（`next.svg`、`vercel
 
 ## 8. 非機能要件
 
-- 削除対象が本当に未参照であることを、`app/` `features/` `lib/` `components/` `tests/` `docs/` と設定ファイルの検索で確かめる。
+- 検査の限界: 照合はベース名（拡張子つき）で行うため、サブディレクトリが違う同名ファイルは区別しない。参照の判定は文字列検索なので、動的に組み立てたパスや、`public/` の URL をコードの外（外部サイトからの直接リンクなど）が使う場合は検出できない。そのようなファイルを置くときは、理由を添えて許可リストに載せる。
 
 ## 9. 未決事項
 
-- [ ] Issue #17 のタイトル（`[chore] 0017 雛形の metadata と未使用 SVG の整理`）と本文を、範囲に合わせて直すか / 担当: 人間
+- なし（2026-10-09: 検査テストは「`public/` の各ファイルが参照されている」を採用、Issue #17 の本文は作業の中で直す、を人間が決定）
 
 ## 10. 変更履歴
 
@@ -61,3 +64,5 @@ Create Next App の雛形が `public/` に残っている（`next.svg`、`vercel
 | --- | --- | --- |
 | 2026-10-08 | 下書きを作成（仕様番号 0017 を付与） | Ready の判定の対象にするため（Issue #25） |
 | 2026-10-08 | `metadata` と `lang` の修正を仕様 0011 に移し、この仕様を未使用 SVG の整理だけに縮めた。AC-1・AC-2（`metadata` と `lang`）を 0011 の AC-28・AC-26e に移した | 0011 の仕様確認（`/feature 11`）で、`app/layout.tsx` の同じ行を直す重なりを解消するため、人間が決定 |
+| 2026-10-09 | AC を確定: AC-1（`public/` の各ファイルが参照されていることの検査）、AC-2（5 つの SVG が無い）、AC-3（既存のテストとビルドが通る）。4.1 に検査テストの追加と Issue 本文の修正を追記。参照の判定の限界を 8 節に記載 | `/feature 17` の仕様確認。調査で 5 つとも未参照と確認。検査の方法（参照の検査）と Issue 本文の扱いを人間が決定 |
+| 2026-10-09 | 8 節の「検査の限界」に、ベース名で照合するためサブディレクトリが違う同名ファイルは区別しないことを追記 | reviewer の指摘（Minor）。実装・テストの挙動は変わらず、文書を実態に合わせた |
