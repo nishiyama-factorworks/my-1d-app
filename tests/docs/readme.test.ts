@@ -643,6 +643,111 @@ describe("AC-30b: README の構成と判断", () => {
   });
 });
 
+// ---- T3: 後半（範囲と制約・AI利用レポート）のキーワード検査 ----
+
+/** 運営上の項目（評価基準・期限・公開設定）の語。README に書かない（Q 承認済み） */
+const OPERATIONAL_TERMS = ["評価基準", "期限", "公開設定"];
+
+/** 本文に含まれる運営上の語を返す（空配列が期待値） */
+function findOperationalTerms(body: string): string[] {
+  return OPERATIONAL_TERMS.filter((t) => body.includes(t));
+}
+
+/** 本文にある番号つきの参照（仕様 0013 / 計画 0016 / ADR 0005 / PR #34 / Issue #21）を出現順に返す */
+function findNumberedReferences(body: string): string[] {
+  return [...body.matchAll(/(?:仕様|計画|ADR)[ \t]*\d{4}|(?:PR|Issue)[ \t]*#\d+/g)].map((m) => m[0]);
+}
+
+describe("findOperationalTerms", () => {
+  it("AC-30c（運営語の判定）: 評価基準・期限・公開設定を含む文字列ではその語を返す", () => {
+    expect(findOperationalTerms("評価基準を満たす")).toEqual(["評価基準"]);
+    expect(findOperationalTerms("提出期限と公開設定")).toEqual(["期限", "公開設定"]);
+  });
+
+  it("AC-30c（運営語の判定）: 運営上の語を含まない文字列では空配列を返す", () => {
+    expect(findOperationalTerms("ダークモードには対応しない")).toEqual([]);
+  });
+});
+
+describe("findNumberedReferences", () => {
+  it("AC-30d（番号参照の判定）: 仕様・計画・ADR の 4 桁番号と PR・Issue の # 番号を返す", () => {
+    const md = "仕様 0013、計画0016、ADR 0005、PR #34、Issue #21";
+
+    expect(findNumberedReferences(md)).toEqual(["仕様 0013", "計画0016", "ADR 0005", "PR #34", "Issue #21"]);
+  });
+
+  it("AC-30d（番号参照の判定）: 番号の無い言及・桁が足りない番号・# の無い PR は返さない", () => {
+    const md = "仕様を直した。計画 12。ADR を書いた。PR 34。Issue の番号は後で。";
+
+    expect(findNumberedReferences(md)).toEqual([]);
+  });
+});
+
+/** 親仕様 0001 の 8 節の項目 */
+const PRODUCTION_ITEMS = [
+  "セキュリティ",
+  "信頼性",
+  "アクセシビリティ",
+  "パフォーマンス",
+  "見やすさ",
+  "メタデータ",
+  "品質ゲート",
+  "テスト方針",
+];
+
+describe("AC-30c: README の範囲と制約", () => {
+  it.each(PRODUCTION_ITEMS)("AC-30c: プロダクション想定の範囲に「%s」が書かれている", (item) => {
+    const body = readmeSection("プロダクション想定の範囲");
+
+    expect(missingStrings(body, [item])).toEqual([]);
+  });
+
+  it("AC-30c: 対応しなかった事項にアプリのタイトル・仮の定数・対応ブラウザ・ダークモードが書かれている", () => {
+    const body = readmeSection("対応しなかった事項");
+
+    expect(missingStrings(body, ["アプリのタイトル", "仮の定数", "対応ブラウザ", "ダークモード"])).toEqual([]);
+  });
+
+  it("AC-30c: 対応しなかった事項に運営上の項目（評価基準・期限・公開設定）が書かれていない", () => {
+    const body = readmeSection("対応しなかった事項");
+
+    expect(findOperationalTerms(body)).toEqual([]);
+  });
+
+  it("AC-30c: 既知の制約に 1,000 件の上限とレート制限が書かれている", () => {
+    const body = readmeSection("既知の制約");
+
+    expect(missingPatterns(body, [/1,?000\s*件/])).toEqual([]);
+    expect(missingStrings(body, ["レート制限"])).toEqual([]);
+  });
+});
+
+describe("AC-30d: README の AI利用レポート", () => {
+  it("AC-30d: 使ったツールに Claude Code が書かれている", () => {
+    const body = readmeSection("使ったツール");
+
+    expect(missingStrings(body, ["Claude Code"])).toEqual([]);
+  });
+
+  it("AC-30d: 進め方に仕様駆動・TDD・CLAUDE.md・.claude/・scripts/verify.sh が書かれている", () => {
+    const body = readmeSection("進め方");
+
+    expect(missingStrings(body, ["仕様駆動", "TDD", "CLAUDE.md", ".claude/", "scripts/verify.sh"])).toEqual([]);
+  });
+
+  it("AC-30d: 人間が判断・修正した点に番号つきの具体例（仕様・計画・ADR・PR・Issue）が 1 つ以上ある", () => {
+    const body = readmeSection("人間が判断・修正した点");
+
+    expect(findNumberedReferences(body).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("AC-30d: AIの出力で注意した点に番号つきの具体例（仕様・計画・ADR・PR・Issue）が 1 つ以上ある", () => {
+    const body = readmeSection("AIの出力で注意した点");
+
+    expect(findNumberedReferences(body).length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("AC-30f: README の相対パス", () => {
   it("AC-30f: README の相対パスが 1 件以上あり、すべて大文字小文字まで一致して実在する", () => {
     const paths = findRelativePaths(readme);
