@@ -1,7 +1,10 @@
 import { GitHubApiError } from "@/lib/github/errors";
-import { buildRepoPath } from "@/lib/search/paths";
+import { buildRepoPathWithSearch } from "@/lib/search/paths";
 
-export function repoPathFromFullName(fullName: string): string {
+export function repoPathFromFullName(
+  fullName: string,
+  search: { q: string; page: number },
+): string {
   // owner の login に "/" は含まれないため、最初の "/" で分ければ
   // repo 側に "/" があっても owner が壊れない。
   const index = fullName.indexOf("/");
@@ -10,5 +13,5 @@ export function repoPathFromFullName(fullName: string): string {
   if (index === -1 || owner === "" || repo === "") {
     throw new GitHubApiError("UPSTREAM");
   }
-  return buildRepoPath(owner, repo);
+  return buildRepoPathWithSearch(owner, repo, search);
 }

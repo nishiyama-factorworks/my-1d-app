@@ -147,7 +147,9 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `lib/search/constants.ts`、`lib/search/back-path.ts`、`lib/search/back-path.test.ts`（3 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T3: 一覧の行リンクに検索条件を付ける**
+- [x] **T3: 一覧の行リンクに検索条件を付ける**
+  - 進捗: RED（12 件失敗。行リンクにクエリが付かない期待値の不一致）→ GREEN（verify --quick PASS、691 件）。変異確認: `page` の代わりに 1 を渡す／`q` に前後空白を付ける／クエリを素の連結にする／`SearchResults` で page を固定する／検索条件を付けない、の 5 つすべてで検出。
+  - 既存テストの変更（計画 1.2 (e) のとおり。期待値は弱めていない）: `search-results.test.tsx` は全 `render` を `renderResults(...)` に置き換え、AC-10 の行リンクの `href` の期待値を `?q=react&page=1` 付きに変更（パスは `pathname` で引き続き検証）。`repo-path.test.ts` は AC-10 の 4 件に第 2 引数と期待値の末尾 `?q=react&page=1` を足した。
   - 対応 AC: AC-15e（部品・ページ単位）、AC-15d（一覧側・トップの入力欄）
   - 先に書くテスト:
     - `features/search/lib/repo-path.test.ts`: 1.2 (e) の既存 4 件の変更に加え、`AC-15e: 検索条件 { q: "react", page: 3 } を付けると /repos/vercel/next.js?q=react&page=3 になる`
