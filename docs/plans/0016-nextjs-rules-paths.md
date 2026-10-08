@@ -102,7 +102,11 @@ Status: in-progress                            <!-- draft | in-progress | done  
 
 > 分け方の考え方: コミット前に `verify.sh --quick` の PASS が必要なため、RED のままのテストはコミットしない。AC-1〜AC-3 は 3 ファイルを直すまで RED なので、テストと 3 ファイルの修正を同じコミット（T1。4 ファイル）に入れる。RED は作業ツリー上で確認して進捗メモに記録する。T2 はコードを変えない文書・検証・レビュー・Issue。別案は Q9。
 
-- [ ] **T1: 構成検査テストの追加と 3 ファイルのパス表記の修正（AC-1〜AC-4 の RED → GREEN）**
+- [x] **T1: 構成検査テストの追加と 3 ファイルのパス表記の修正（AC-1〜AC-4 の RED → GREEN）**
+  - 進捗: RED 1（検出・解析・判定を仮実装）で 40 件中 24 件が失敗 → 本実装で RED 2（`.claude/` 未修正）3 件失敗: AC-1 が 7 件（`10-nextjs.md:3`・`:5`・`:8`・`:27`、`nextjs-feature-scaffold/SKILL.md:13`・`:20`、`spec-writing/SKILL.md:13`）、AC-2 が `missing: [features/**, proxy.ts]`・`extra: [src/app/**, src/features/**, src/middleware.ts]`・`duplicates: []`、AC-3（27 行目が `` `features/<名前>/` に置く `` を含まない）、AC-4 は通る → `.claude/` の 3 ファイルを Edit で修正（編集ごとに人間の確認）して GREEN（40 件 PASS）。
+  - `.claude/` の差分: パスの表記の行だけ（+6 -7）。`paths` は 6 行 → 5 行（`app/**`・`features/**`・`next.config.*`・`middleware.ts`・`proxy.ts`）。ルールの禁止事項・手順は変えていない。
+  - 変異確認（14 個、すべて検出または期待どおり）: `src/` 検出の境界から引用符を外す／行頭 `^` を外す／単純な `includes` にする、`paths` の引用符処理を外す／別キーで止まる処理を外す／CRLF を扱わない、重複検出を外す、`listScanTargets` を rules だけにする／`SKILL.md` の判定を外す、ルートに `src/` を作る（失敗）→ 消す（通る）。変異 6（AC-3 の期待値の先頭のバッククォート）: バッククォートなしの期待値は RED 時点の文言（`` `src/features/<名前>/` に置く ``）でも部分一致で通り、ありの期待値は失敗する。
+  - 注意（手順の逸脱）: 変異 6 の確認のため、`.claude/rules/10-nextjs.md` を一時的に RED 時点の文言へ戻した際、Edit ではなく Bash のスクリプトで書き換えたため、保護ファイルの編集時の確認画面を経ていない。直後に元へ戻し、`git diff` で差分が修正後と同一（3 ファイル +6 -7）であることを確認した。
   - 対応 AC: AC-1、AC-2、AC-3、AC-4
   - 先に書くテスト: `tests/harness/claude-paths-root-layout.test.ts`
     - `describe("走査の前提")`
