@@ -186,7 +186,8 @@ Status: in-progress                    <!-- draft | in-progress | done  ※ Sess
   - 実装対象: `app/layout.tsx`、`app/layout.test.tsx`（2 ファイル）
   - 完了条件: `pnpm test`・`pnpm typecheck`・`pnpm lint` PASS、`bash scripts/verify.sh --quick` PASS。
 
-- [ ] **T4: トップと詳細のページタイトル**
+- [x] **T4: トップと詳細のページタイトル**
+  - 進捗: RED（追加 14 件中 12 件失敗。スタブ `return {}`。「API を呼ばない」の補強 2 件は最初から通る）→ GREEN（verify --quick PASS、730 件）。変異確認: 生の `q`／`absolute` を使わない／`q` なしでも検索タイトル／`page` をタイトルに入れる／詳細で `fullName` から作る／`owner` の小文字化、の 6 つすべてで検出。
   - 対応 AC: AC-28a、AC-28b、AC-28c
   - 先に書くテスト:
     - `app/page.test.tsx`（`describe("トップページ: タイトル（0011）")`。`import Page, { generateMetadata } from "./page"`。`callMetadata(searchParams)` で `{ params: Promise.resolve({}), searchParams: Promise.resolve(searchParams) }` を渡す）

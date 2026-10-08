@@ -7,7 +7,20 @@ import { LoadingStatus } from "@/features/state-views/components/loading-status"
 import { APP_NAME } from "@/lib/app-config";
 import { buildSearchPath } from "@/lib/search/paths";
 import { parseSearchParams } from "@/lib/search/query";
+import type { Metadata } from "next";
 import { Suspense } from "react";
+
+// ルートレイアウトの title.template は同じセグメントの page.tsx には適用されないため、
+// absolute で完成形のタイトルを返す。
+export async function generateMetadata({
+  searchParams,
+}: PageProps<"/">): Promise<Metadata> {
+  const { q } = parseSearchParams(await searchParams);
+  if (q === null) {
+    return { title: { absolute: APP_NAME } };
+  }
+  return { title: { absolute: `${q} の検索結果 | ${APP_NAME}` } };
+}
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const { q, page } = parseSearchParams(await searchParams);

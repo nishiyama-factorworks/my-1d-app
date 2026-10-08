@@ -8,7 +8,7 @@ import type {
   SearchRepositoriesParams,
   SearchRepositoriesResult,
 } from "@/lib/github/types";
-import Page from "./page";
+import Page, { generateMetadata } from "./page";
 
 // SearchForm が useRouter を呼ぶ。App Router のコンテキストが無いと例外になるため、
 // プロセス境界の外（履歴更新・RSC 取得）にあたる useRouter だけを差し替える。
@@ -619,5 +619,65 @@ describe("トップページ: 詳細への行リンク（0009）", () => {
     expect(new URL(href, "http://localhost").searchParams.get("q")).toBe(
       "日本語 & react",
     );
+  });
+});
+
+describe("トップページ: タイトル（0011）", () => {
+  function callMetadata(searchParams: TestSearchParams) {
+    return generateMetadata({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve(searchParams),
+    });
+  }
+
+  it("AC-28a: q が無いとき、タイトルはアプリ名だけ（absolute）になる", async () => {
+    expect(await callMetadata({})).toEqual({
+      title: { absolute: "GitHub リポジトリ検索" },
+    });
+  });
+
+  it.each([
+    { label: "q が空", searchParams: { q: "" } },
+    { label: "q が空白のみ", searchParams: { q: "   " } },
+    { label: "q が全角空白のみ", searchParams: { q: "　" } },
+    { label: "page=2 のみ（q なし）", searchParams: { page: "2" } },
+  ])(
+    "AC-28a: $label のとき、タイトルはアプリ名だけになる",
+    async ({ searchParams }) => {
+      expect(await callMetadata(searchParams)).toEqual({
+        title: { absolute: "GitHub リポジトリ検索" },
+      });
+    },
+  );
+
+  it("AC-28b: q=react のとき、タイトルは「react の検索結果 | GitHub リポジトリ検索」になる", async () => {
+    expect(await callMetadata({ q: "react" })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28b: q の前後の空白は除かれる", async () => {
+    expect(await callMetadata({ q: " react " })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28b（補強）: page はタイトルに入らない", async () => {
+    expect(await callMetadata({ q: "react", page: "3" })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28b（補強）: q が複数あるときは先頭の値を使う", async () => {
+    expect(await callMetadata({ q: ["react", "vue"] })).toEqual({
+      title: { absolute: "react の検索結果 | GitHub リポジトリ検索" },
+    });
+  });
+
+  it("AC-28a・28b（補強）: タイトルの生成は検索 API を呼ばない", async () => {
+    await callMetadata({});
+    await callMetadata({ q: "react" });
+
+    expect(searchRepositories).not.toHaveBeenCalled();
   });
 });
