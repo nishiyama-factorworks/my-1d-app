@@ -100,8 +100,8 @@ describe("詳細ページ", () => {
       callPage({ owner: "vercel", repo: "no-such-repo" }),
     ).rejects.toMatchObject({ digest: NOT_FOUND_DIGEST });
 
+    // reject されるため描画する要素は返らない（= 詳細は表示されない）
     expect(getRepository).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 
   const otherKinds: { kind: GitHubErrorKind }[] = [

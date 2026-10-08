@@ -1,6 +1,6 @@
 # 0008: 詳細ページ 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                     <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #8
 - 対応する仕様: docs/specs/0008-repo-detail-page.md
@@ -131,7 +131,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 手動確認（`next start -p 3111`、実 API。ブラウザは使えず curl で確認）:
     - `/repos/vercel/next.js` → 200。h1 `vercel/next.js`、6 項目（オーナー vercel／言語／Star数 143,243／Watcher数 1,630／Fork数 34,141／Issue数 3,569。桁区切りあり）、`GitHub で開く`（href・`rel="noopener noreferrer"`・`target` なし）、`トップへ戻る`（`/`）、アイコン `alt="vercel"`。アイコンの画像 `/_next/image?...` は 200（image/png）で、`remotePatterns` と一致している。
     - 存在しない `/repos/vercel/this-repo-does-not-exist-0008` → 404、形式が不正な `/repos/a%20b/c` → 404（AC-20a）。URL が大文字の `/repos/VERCEL/NEXT.JS` → 200 で、見出しは API の応答の `vercel/next.js`（AC-12）。
-    - 未確認: ① 一覧の行リンクのプリフェッチで `getRepository` が呼ばれないか（RSC のヘッダーを付けた curl が 307 になり再現できなかった。`loading.tsx` が無いので先読みは既定の `auto` の見込みだが、実測していない）、② 幅 320px での折り返し、③ ブラウザでのリンク遷移（クリック）。いずれも PR で人間の確認を依頼する。
+    - 未確認: ① 一覧の行リンクのプリフェッチで `getRepository` が呼ばれないか（RSC のヘッダーを付けた curl が 307 になり再現できなかった。`loading.tsx` が無いので先読みは既定の `auto` の見込みだが、実測していない）、② 幅 320px での折り返し、③ ブラウザでのリンク遷移（クリック）。④ リロードして同じ内容が出ること（同じ URL の再取得で、直接開くのと同じ経路）、⑤ 言語が無いリポジトリでの `-` の表示（実在する例を選んでいない。単体テストで確認済み）。いずれも PR で人間の確認を依頼する。
   - 対応 AC: なし（文書・検証）
   - 先に書くテスト: なし
   - 実装対象: `docs/architecture.md`（3節に「`features/repo-detail/`: 詳細表示（`components/repo-detail-view.tsx`）。取得は `app/repos/[owner]/[repo]/page.tsx` が `getRepository` で行い、結果を渡す（Server Component）」、5節に「詳細ページは `GitHubApiError` の `NOT_FOUND` のときだけ `notFound()`。それ以外の例外はそのまま投げる（専用表示は 0010）」を追記）、本計画の進捗メモ（2 ファイル）
@@ -227,3 +227,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 0009: 「トップへ戻る」の宛先は `RepoDetailView` 内の固定の `/`。検索条件の持ち回りを足すときは、宛先を props で受け取る形に変える（AC-12 の URL 単独での表示を保つ）。
   - 0010: 詳細ページの読み込み中（`loading.tsx`）・404（`not-found.tsx`）・エラー（`error.tsx`）の表示。`loading.tsx` を置くと一覧の行リンクのプリフェッチ範囲が変わるので、`getRepository` の呼び出しが増えないかを再確認する。取得を `<Suspense>` に移す場合は、`notFound()` がストリーミング開始後になり HTTP ステータスが 200 になる点に注意（`not-found.md` 193行）。
   - 0011: 詳細ページの `metadata`（タイトル）、`getRepository` のキャッシュ、外部リンクの補足（提案 P4）、320px での表示。
+
+- 2026-10-08: T1〜T3 完了、レビュー済み。reviewer は Approve（Critical・Major なし）、security-reviewer は Critical・High・Medium なし（Low 1 件: 認証なしの閲覧者が API のレート制限を消費しうる。キャッシュが無いことは 0003/0011 の範囲の既知のリスク）。レビューの Minor に対応: AC-20a のテストにあった、何も確かめていない行（`render` を呼ばない状態での `queryByRole` の否定）を削除。T1 の RED は別セッション（my-app-ed）が書き、GREEN 以降をこのセッションが引き継いだ。
