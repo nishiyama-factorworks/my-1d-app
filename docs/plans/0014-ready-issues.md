@@ -321,7 +321,10 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `scripts/lib/ready-issues-cli.mjs`、`scripts/lib/ready-issues-cli.test.ts`、`scripts/ready-issues.mjs`、`scripts/ready-issues.test.ts`（4 ファイル）
   - 完了条件: `pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。`node scripts/ready-issues.mjs`（引数なし。読み取りだけ。allow に入る前なので確認が出る）を実行し、実際の Issue で判定が表示されることを確かめる（結果を進捗メモに記録）。
 
-- [ ] **T8: ハーネスへの組み込み（`--apply` を確認の対象にする）** ※ 保護ファイル 2 つ。編集時に確認が出る
+- [x] **T8: ハーネスへの組み込み（`--apply` を確認の対象にする）** ※ 保護ファイル 2 つ。編集時に確認が出る
+  - 進捗: RED（21 件中 11 件失敗）→ GREEN（21 件 PASS）。Vitest から Git Bash と jq が動くことを確認（Q5 は文字列検査への切り替え不要）。変異確認: 照合を `$stripped` にする／節を `.env` の規則より前に移す／`[^;&|]*` を `.*` にする／改行の置換を外す、の 4 つすべてで検出。
+  - Q10: 公式ドキュメント（permissions）では `*` は先頭・途中・末尾に置ける（調査エージェント経由。出典: https://code.claude.com/docs/en/permissions.md の Wildcard patterns）ため ask の行を足した。同じ報告に評価順（deny → ask → allow）と矛盾する記述（allow が優先する例）があり、実機では未確認。確認が出ることは hook が保証するので AC-22 には影響しない。
+  - 注意: hook と settings の変更は **セッションの再起動で反映される**。このセッションでは反映前のため、`--apply` の確認は手動で hook を実行して見た（テストが同じことを検証している）。
   - 対応 AC: AC-22
   - 着手前: Claude Code の公式ドキュメント（permissions）で、パターンの途中の `*` の可否を確認する（Q10）。
   - 先に書くテスト: `tests/harness/ready-issues-harness.test.ts`（1.2 (i)）

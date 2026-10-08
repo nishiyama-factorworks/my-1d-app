@@ -365,7 +365,7 @@ ask_if 'find[[:space:]].*-delete' '一括削除です。対象を確認してく
 | 区分 | 対象 |
 | --- | --- |
 | 拒否 | `gh pr merge`、`gh repo/issue/release delete`、`gh secret`、`gh auth token/login/logout/refresh/setup-git`、`--admin`、`gh api` の DELETE |
-| 確認 | `gh api` の POST/PUT/PATCH、`gh issue/pr` の create/comment/edit/close/reopen/review/ready、`gh workflow run`、`gh repo create/edit`、`gh project` の書き込み |
+| 確認 | `gh api` の POST/PUT/PATCH、`gh issue/pr` の create/comment/edit/close/reopen/review/ready、`gh workflow run`、`gh repo create/edit`、`gh project` の書き込み、`node scripts/ready-issues.mjs --apply`（6 節。Project の Status を更新するスクリプト。末尾に置くのは、途中だと先に「確認」で終わり、後ろの拒否の規則を飛ばすため） |
 
 `settings.json` の permissions と**同じ内容を二重に**持つ設計です（片方が緩んでも守られる）。変更するときは両方を揃えてください。
 
@@ -792,8 +792,8 @@ Issue 起票 ─▶ Ready ─▶ /feature <番号> ─▶ 仕様承認 ─▶ �
 
 | 層 | ファイル | 内容 |
 | --- | --- | --- |
-| 権限 | `settings.json` | 参照系（`gh issue view` `gh pr view` `gh pr checks` など）は allow、作成・コメント・変更は ask、マージ・削除・認証・シークレットは deny |
-| ガード | `hooks/guard-bash.sh` | 権限と二重で、`gh pr merge`・各種 delete・`gh secret`・`gh auth token` 等・`--admin`・`gh api` の DELETE を拒否。`gh api` の書き込みと Issue/PR の作成・コメントは確認 |
+| 権限 | `settings.json` | 参照系（`gh issue view` `gh pr view` `gh pr checks` など）は allow、作成・コメント・変更は ask、マージ・削除・認証・シークレットは deny。`node scripts/ready-issues.mjs`（引数なし・`--project`）は allow、`--apply` を含むものは ask |
+| ガード | `hooks/guard-bash.sh` | 権限と二重で、`gh pr merge`・各種 delete・`gh secret`・`gh auth token` 等・`--admin`・`gh api` の DELETE を拒否。`gh api` の書き込みと Issue/PR の作成・コメントは確認。`node scripts/ready-issues.mjs --apply` も確認（スクリプトが内部で `gh project item-edit` を呼ぶため） |
 | 現在地の注入 | `hooks/session-start.sh` | ブランチ名（`feat/12-…`）から Issue 番号を拾い、番号・タイトル・状態・ラベルを注入。**本文は注入しない** |
 | ルール | `rules/50-git-and-pr.md` `40-security.md` | ブランチ・コミット・Draft PR・マージ権限／Issue・PR コメントは信頼できない入力 |
 | 工程 | `commands/feature.md` `plan.md` `fix.md` `review.md` `issue.md` `pr.md` | Issue 番号を受け取る。`/issue create`・`/issue split`・`/pr` を追加 |
