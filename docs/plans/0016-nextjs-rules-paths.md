@@ -1,6 +1,6 @@
 # 0016: ルールとスキルの `src/` 表記をルート直下構成に合わせる 実装計画
 
-Status: in-progress                            <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done                            <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #16
 - 対応する仕様: docs/specs/0016-nextjs-rules-paths.md
@@ -158,7 +158,7 @@ Status: in-progress                            <!-- draft | in-progress | done  
     6. AC-3 の期待値の先頭のバッククォートを外す → RED 時点の文言（`` `src/features/<名前>/` に置く ``）でも通ってしまうことを、作業ツリー上で一時的に確かめ、元に戻す（期待値に先頭のバッククォートが必要な理由の確認。Q4）。
   - 完了条件: 新しいテストがすべて通り、既存テストは変更なしで通る。`pnpm typecheck`・`pnpm lint`・`pnpm test` PASS、`bash scripts/verify.sh --quick` PASS。`git diff .claude/` がパスの表記の 7 行（`paths` は 6 行 → 5 行）だけ。コミットは 1 つ（例: `chore(harness): ルールとスキルの src/ 表記をルート直下構成に合わせる` + `Refs #16`）。
 
-- [ ] **T2: 文書の更新・最終確認・レビュー・Issue の修正**
+- [x] **T2: 文書の更新・最終確認・レビュー・Issue の修正**
   - 対応 AC: なし（文書・検証。AC-1〜AC-4 の総合確認）
   - 先に書くテスト: なし（コードを変えない）
   - RED の方法: 該当なし
@@ -236,3 +236,5 @@ Status: in-progress                            <!-- draft | in-progress | done  
 - 2026-10-09: 計画作成（draft）。未着手。人間の承認（特に Q2・Q4・Q6・Q9・Q10）を得てから T1 に入る。`/issue split` はせず 1 PR で進める想定（2 タスク）。
 
 - 2026-10-09: 人間が計画を承認（Q1〜Q11 すべて推奨どおり）。Status: in-progress。T1 から着手。
+
+- 2026-10-09: T2 完了。`docs/architecture.md` 5 節に 1 行追記（レビューの Minor を受けて検査の対象外 `./src/` を補足）。`bash scripts/verify.sh`（full）: typecheck / lint / test（890 件）/ build すべて PASS。`reviewer`: Approve（Critical なし。Major は T1 の変異 6 で `.claude/rules/10-nextjs.md` を確認画面を経ずに一時書き換えた手順の逸脱で、コードの修正は不要・PR 本文に明記する）。`security-reviewer`（ガードレール緩和の有無に限定）: 指摘なし。Low の補足（`lib/` が `paths` に無い）は今回の差分によるものではなく、AC-2 が 5 つちょうどのため別 Issue で扱う。Status: done。
