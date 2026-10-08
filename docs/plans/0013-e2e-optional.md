@@ -1,6 +1,6 @@
 # 0013: E2Eテスト（任意） 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #13
 - 対応する仕様: docs/specs/0013-e2e-optional.md（あわせて docs/specs/0003-github-api-client.md の AC-23f〜AC-23i）
@@ -198,7 +198,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
     - 変異を戻した後に `git status` と `git diff` で、`lib/`・`features/`・`e2e/` に差分が残っていないこと、`AGENTS.md`・`next-env.d.ts` に差分が無いことを確認する。
   - 完了条件: `pnpm test:e2e` が 2 件 PASS（2 回連続）。`bash scripts/verify.sh --quick` PASS。変異 1〜7 の結果を進捗メモに記録する。
 
-- [ ] **T5: 文書の追従、全体の検証とレビュー**（`docs`）
+- [x] **T5: 文書の追従、全体の検証とレビュー**（`docs`）
   - 対応 AC: なし（AC-31a〜AC-31g の総合確認）
   - 先に書くテスト: なし
   - 実装対象（3 ファイル）: `docs/architecture.md`（2 節の表のテストの行に Playwright（E2E・任意、ADR 0006）、3 節に `e2e/`、5 節「宛先オリジンは `api.github.com` に固定」に「`GITHUB_API_BASE_URL` によるループバックへの上書き（E2E 専用。上書き中はトークンを送らない）」を追記、6 節に `GITHUB_API_BASE_URL` は E2E 専用で `.env.example` に書かないこと）、`docs/specs/0013-e2e-optional.md`（9 節の未決事項を決定内容で埋めてチェック、変更履歴）、本計画（進捗メモ・Status）
@@ -301,3 +301,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: T3 完了。AC-31g の RED: 除外前の `vitest run` で `tests/foundation/vitest-excludes-e2e.test.ts` の「含まれない」が `expected ['e2e/search-empty.spec.ts', …(1)] to deeply equal []` で失敗し、Vitest が `e2e/*.spec.ts` を拾って Playwright の `test.beforeEach() ... async test.describe()` のエラーでも失敗した。GREEN: `vitest.config.mts` に `exclude: [...configDefaults.exclude, "e2e/**"]`（`configDefaults.exclude` を外すと `node_modules` 配下の 869 ファイルが対象に入ることを確認し、理由をコメントに記載）。`pnpm vitest run` 47 ファイル・934 件 PASS、`verify.sh --quick` PASS。E2E の RED（`pnpm test:e2e`）: 2 件失敗（AC-31a は `getByText('総ヒット件数: 45 件')` が見つからない、AC-31b は 0 件の案内が見つからない）。アプリ（`pnpm build` → `pnpm start -p 3100`）とブラウザは起動しており、画面は「GitHub に接続できませんでした」（`NETWORK`）。モック（4010）が無く、接続先の上書きが効いた結果で、実 API には接続していない（存在しないキーワードなら実 API は 0 件で通るはずのため）。実行後、サーバー停止済み、`git status` に `AGENTS.md`・`next-env.d.ts` の差分なし（`test-results/` は gitignore）。E2E は T4 で GREEN にする。
 
 - 2026-10-09: T4 完了。`e2e/mock-api/server.ts`（`node:http`、127.0.0.1:4010、固定データ 45 件、`search/repositories` と `repos/{owner}/{repo}` のみ、それ以外は 404）と、`playwright.config.ts` のモックの webServer を追加。GREEN: `pnpm test:e2e` が 2 件 PASS（2 回連続。2 回目はキャッシュを消して起動するため結果が変わらない）。実行後、3100・4010 のサーバーは停止済み、`AGENTS.md`・`next-env.d.ts` に差分なし。E2E の変異 7 件をすべて検出し、復元を確認（1: 戻り先から page を落とす、2: 戻り先を常に /、3: 行リンクから検索条件を落とす、4: 入力欄の初期値を使わない、5: Star と Watcher の入れ替え、6: 0 件の案内の文言変更、7: モックが page を無視。いずれも 1 件失敗）。変異の実行中は、バックグラウンドの変異が入った状態でテストが走ったため、停止フックが一度失敗を返した（変異が戻った後は全 PASS）。復元後に `verify.sh --quick` PASS・`pnpm test:e2e` 2 件 PASS を再確認。
+
+- 2026-10-09: T5 の途中。`verify.sh`（full）PASS、`pnpm test:e2e` 2 件 PASS。`reviewer`: Approve（Critical・Major なし）、`security-reviewer`: Critical・High・Medium なし（Low 1 件）。反映: (1) モックの `page` / `per_page` を `Number.isSafeInteger` と範囲（`page` ≥ 1、1 ≤ `per_page` ≤ 100）で検証し、範囲外は 422（Low）、(2) アプリの待ち受けを `pnpm start -H 127.0.0.1` に限定（Minor）、(3) 仕様 0003 の AC-23g と ADR 0006 の拒否条件の列挙を実装に揃えた（Minor）、(4) Q11 の確認結果: `@next/env@16.3.8` の `processEnv` は `typeof p[key] === "undefined"` のときだけ `.env*` の値を採用するため、webServer の `env` の `GITHUB_TOKEN=""` は `.env.local` で上書きされない（レビューアが確認。さらに上書き中はトークンを読まない）。見送り（Nit）: モックの拡張子 `.mts` 化、`vitest list` 出力の型検証、`new RegExp` のエスケープ。Info: `localhost` を許す点と、本番に誤設定された場合の影響は、トークンを送らない設計のため受け入れる（ADR の「受け入れるリスク」に記載済み）。

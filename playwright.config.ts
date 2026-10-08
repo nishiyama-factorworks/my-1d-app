@@ -23,9 +23,10 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
+      // LAN から偽の API につながったアプリに届かないよう、127.0.0.1 だけで待ち受ける。
       // 前回の fetch キャッシュ（ADR 0005）が残ると、モックの変更が反映されない。起動前に消す。
       // ビルドを含むため、待ち時間を長めにする。
-      command: `node -e "require('node:fs').rmSync('.next/cache/fetch-cache',{recursive:true,force:true})" && pnpm build && pnpm start -p ${APP_PORT}`,
+      command: `node -e "require('node:fs').rmSync('.next/cache/fetch-cache',{recursive:true,force:true})" && pnpm build && pnpm start -H 127.0.0.1 -p ${APP_PORT}`,
       url: `http://127.0.0.1:${APP_PORT}`,
       timeout: 180_000,
       // 上書きなしの既存サーバーを再利用すると、実際の GitHub API を呼んでしまう。

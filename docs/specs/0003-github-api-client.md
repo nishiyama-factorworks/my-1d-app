@@ -60,7 +60,7 @@ GitHub REST APIをサーバー側から呼び、アプリ内の型に変換し�
 | AC-13e | 個別APIの `owner.avatar_url` が `https` でない・ホストが `avatars.githubusercontent.com` でない・ユーザー名/パスワード/ポートを含む。または `html_url` が `https` でない・ホストが `github.com` でない・ユーザー名/パスワード/ポートを含む | `getRepository` を呼ぶ | `UPSTREAM` として失敗する。成功時は検証した正規化後のURLを返す |
 | AC-23e | HTTP層に、`https://api.github.com` 以外のオリジンに解決されるパス（`//evil.example/x`、絶対URLなど）を渡す | API呼び出しを行う | `fetch` を呼ばずに `VALIDATION` として失敗する（トークンを外部ホストに送らない） |
 | AC-23f | 環境変数 `GITHUB_API_BASE_URL` が `http://127.0.0.1:4010` または `http://localhost:4010`（ループバック。仕様 0013） | HTTP層でAPIを呼ぶ | `fetch` が、そのオリジンの URL で呼ばれる |
-| AC-23g | `GITHUB_API_BASE_URL` が、ループバック以外、URL として不正、またはパスを含む | HTTP層でAPIを呼ぶ | `fetch` を呼ばずに `VALIDATION` として失敗する |
+| AC-23g | `GITHUB_API_BASE_URL` が、オリジンのみの `http://127.0.0.1:<ポート>` / `http://localhost:<ポート>` 以外（ループバック以外、URL として不正、パス・クエリ・フラグメント・認証情報を含む、https、ポートなし、など） | HTTP層でAPIを呼ぶ | `fetch` を呼ばずに `VALIDATION` として失敗する |
 | AC-23h | `GITHUB_API_BASE_URL` がループバックで、`GITHUB_TOKEN` も設定されている | HTTP層でAPIを呼ぶ | `Authorization` ヘッダを付けない |
 | AC-23i | `GITHUB_API_BASE_URL` が未設定または空文字 | HTTP層でAPIを呼ぶ | `https://api.github.com` を使う（AC-23a〜AC-23e が変わらない） |
 | AC-24f | `x-ratelimit-reset` が安全な整数として読めない値（桁数が極端に大きい等） | `RATE_LIMIT` に分類する | リセット時刻は保持されない（`Invalid Date` を保持しない） |

@@ -68,6 +68,17 @@ const server = http.createServer((req, res) => {
     }
     const page = Number(url.searchParams.get("page") ?? "1");
     const perPage = Number(url.searchParams.get("per_page") ?? "30");
+    // 範囲外の値でループが膨らまないよう、本物の API と同じ範囲に限る。
+    if (
+      !Number.isSafeInteger(page) ||
+      page < 1 ||
+      !Number.isSafeInteger(perPage) ||
+      perPage < 1 ||
+      perPage > 100
+    ) {
+      send(res, 422, { message: "Validation Failed" });
+      return;
+    }
     const start = (page - 1) * perPage;
     const items = [];
     for (let n = start + 1; n <= Math.min(start + perPage, TOTAL); n++) {
