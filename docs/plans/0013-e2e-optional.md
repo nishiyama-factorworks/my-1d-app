@@ -108,7 +108,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 > 分け方の考え方: コミット前に `verify.sh --quick` の PASS が必要（E2E は含まない）。Vitest の RED はコミットしない（テストと実装を同じコミットにする）。E2E は `test:` → `feat:` の連続コミット（`.claude/rules/50-git-and-pr.md`）にし、T3 で RED のシナリオをコミットして T4 で GREEN にする（Q10）。各タスクの変更は 5 ファイル・300 行以内に収める。
 
-- [ ] **T0: 【人間への依頼】`@playwright/test` の追加とブラウザの取得**（Claude は実行しない）
+- [x] **T0: 【人間への依頼】`@playwright/test` の追加とブラウザの取得**（Claude は実行しない）
   - 対応 AC: なし（AC-31a・AC-31b の前提）
   - 人間が実行するコマンド（Claude Code のプロンプトで `!` を付けて実行）:
     1. `! pnpm add -D @playwright/test`（`package.json` と `pnpm-lock.yaml` が更新される）
@@ -116,7 +116,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - Claude の確認（読み取りのみ）: `pnpm exec playwright --version` が表示されること、`package.json` の devDependencies に `@playwright/test` が 1 行増えただけであること（`git diff package.json`）、`pnpm typecheck`・`pnpm lint`・`pnpm test` が従来どおり PASS すること。導入されたバージョンを T1 の ADR に転記する。
   - 完了条件: 上の確認がすべて取れる。ブラウザの取得ができない環境なら、その旨を進捗メモに書き、T1・T2・T3 の Vitest 部分まで進める（1.5）。
 
-- [ ] **T1: ADR 0006 と、Playwright の出力の除外**（`chore`。依存追加のコミットを兼ねる）
+- [x] **T1: ADR 0006 と、Playwright の出力の除外**（`chore`。依存追加のコミットを兼ねる）
   - 対応 AC: なし（仕様 4.1「依存の追加の理由を ADR 0006 に残す」）
   - 先に書くテスト: なし（文書と設定のみ。`.gitignore` の確認は下の完了条件の `git check-ignore` で行う）
   - 実装対象（5 ファイル）: `docs/adr/0006-playwright-e2e.md`（新規。`docs/adr/0000-template.md` に沿う）、`.gitignore`、`eslint.config.mjs`、`package.json`・`pnpm-lock.yaml`（T0 で人間が更新した内容をコミットに含めるだけ。Claude は編集しない。Q12）
@@ -292,3 +292,6 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - `mappers.ts` は `avatar_url` を `https://avatars.githubusercontent.com` に、`html_url` を `https://github.com` に限り、`next.config.ts` は `/u/**` と `?v=4` だけを許す（固定データはこれに合わせる）。
 
 - 2026-10-09: 人間が計画を承認（Q1〜Q15 すべて推奨どおり。Q10 の E2E の RED の取り方の変更を含む）。Status: in-progress。T0（人間による @playwright/test の追加とブラウザの取得）の完了待ち。
+
+- 2026-10-09: T0 完了（人間が実行）。`@playwright/test` 1.63.0 を追加、chromium（Chrome for Testing 153.0.8010.12）を取得。`package.json` の差分は `@playwright/test` の 1 行のみ。`pnpm-lock.yaml` の `-1` 行は、`next` の依存キーに任意の peer 依存 `@playwright/test@1.63.0` が加わっただけでパッケージの削除ではない。`verify.sh --quick` PASS。
+- 2026-10-09: T1 完了。ADR 0006（Status: Proposed。ライセンス Apache-2.0 を `node_modules/@playwright/test/LICENSE` と `package.json` で確認、開発元 Microsoft Corporation。リリース頻度と Cypress の詳細は未確認と明記）。`.gitignore` に `/test-results/`・`/playwright-report/`、`eslint.config.mjs` の `globalIgnores` に同じ 2 つを追加。`git check-ignore` は両方 0。`package.json`・`pnpm-lock.yaml` のステージは Claude で通った（Q12。hook に止められなかった）。`verify.sh --quick` PASS。
