@@ -200,6 +200,115 @@ function findPnpmCommands(md: string): PnpmCommand[] {
   return commands;
 }
 
+type TocItem = { text: string; href: string };
+type MarkdownTable = { header: string[]; rows: string[][] };
+type ViolationHit = { line: number; text: string };
+
+/**
+ * `#` 見出しの後、最初の `##` の前（フェンスの外）にある箇条書き（`-` と `*`）のうち、
+ * `[文字](href)` だけからなる項目を返す。目次が無ければ空配列
+ */
+function extractToc(md: string): TocItem[] {
+  const items: TocItem[] = [];
+  let fence: { char: string; length: number } | null = null;
+  let seenTitle = false;
+  for (const line of splitLines(md)) {
+    const fenceMatch = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (fence !== null) {
+      if (
+        fenceMatch !== null &&
+        fenceMatch[1][0] === fence.char &&
+        fenceMatch[1].length >= fence.length
+      ) {
+        fence = null;
+      }
+      continue;
+    }
+    if (fenceMatch !== null) {
+      fence = { char: fenceMatch[1][0], length: fenceMatch[1].length };
+      continue;
+    }
+    if (/^#{2,6}[ \t]+/.test(line)) break;
+    if (/^#[ \t]+/.test(line)) {
+      seenTitle = true;
+      continue;
+    }
+    if (!seenTitle) continue;
+    const item = /^[-*][ \t]+\[([^\]]+)\]\(([^)\s]+)\)[ \t]*$/.exec(line);
+    if (item !== null) items.push({ text: item[1], href: item[2] });
+  }
+  return items;
+}
+
+/** 本文の最初の表を、ヘッダー名と行ごとのセルの配列で返す。表が無ければ null */
+function parseMarkdownTable(body: string): MarkdownTable | null {
+  const lines = splitLines(body);
+  const separator = /^[ \t]*\|?[ \t]*:?-{3,}:?[ \t]*(\|[ \t]*:?-{3,}:?[ \t]*)*\|?[ \t]*$/;
+  for (let i = 0; i + 1 < lines.length; i++) {
+    if (!lines[i].includes("|") || !separator.test(lines[i + 1])) continue;
+    const rows: string[][] = [];
+    for (let j = i + 2; j < lines.length && lines[j].trim() !== "" && lines[j].includes("|"); j++) {
+      rows.push(splitTableRow(lines[j]));
+    }
+    return { header: splitTableRow(lines[i]), rows };
+  }
+  return null;
+}
+
+/** 表の 1 行をセルに分ける。バッククォート内の | とエスケープした \| では分けない */
+function splitTableRow(line: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  let inCode = false;
+  const text = line.trim();
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\\" && text[i + 1] === "|") {
+      current += "\\|";
+      i++;
+    } else if (ch === "`") {
+      inCode = !inCode;
+      current += ch;
+    } else if (ch === "|" && !inCode) {
+      cells.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  cells.push(current);
+  // 行頭・行末の | が作る空のセルを落とす
+  if (text.startsWith("|")) cells.shift();
+  if (text.endsWith("|") && !text.endsWith("\\|")) cells.pop();
+  return cells.map((c) => c.trim());
+}
+
+/** セルの中の参照（`#` のリンク、`docs/` のリンク、バッククォート内のリポジトリ内パス）を返す */
+function findCellReferences(cell: string): string[] {
+  const refs: string[] = [];
+  for (const m of cell.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+    if (m[1].startsWith("#")) {
+      refs.push(m[1]);
+      continue;
+    }
+    const target = linkTargetToPath(m[1]);
+    if (target !== null && target.startsWith("docs/")) refs.push(target);
+  }
+  for (const m of cell.matchAll(/`([^`\n]+)`/g)) {
+    if (isRepoPathInCode(m[1])) refs.push(m[1]);
+  }
+  return refs;
+}
+
+/** 外部の読者に通じない書き方（AC-n・この README・Draft PR・マージ済み）を行番号つきで返す。フェンス内も対象 */
+function findExternalReaderViolations(md: string): ViolationHit[] {
+  const hits: ViolationHit[] = [];
+  splitLines(md).forEach((text, index) => {
+    if (/AC-\d|この\s*README|Draft PR|マージ済み/.test(text)) hits.push({ line: index + 1, text });
+  });
+  return hits;
+}
+
 // ---- 純粋関数の下請け ----
 
 function splitLines(md: string): string[] {
@@ -685,6 +794,173 @@ describe("findSecretLike", () => {
 
   it("AC-30g（秘密検出）: トークンに似た接頭辞を含まない通常の文章は検出しない", () => {
     expect(findSecretLike("ghp という略称や github の pat について")).toEqual([]);
+  });
+});
+
+describe("extractToc", () => {
+  it("AC-30l（目次の抽出）: # 見出しの後、最初の ## の前にある [文字](href) の項目を - と * の両方で返す", () => {
+    const md = ["# タイトル", "", "- [概要](#概要)", "* [構成](#構成)", "", "## 概要"].join("\n");
+
+    expect(extractToc(md)).toEqual([
+      { text: "概要", href: "#概要" },
+      { text: "構成", href: "#構成" },
+    ]);
+  });
+
+  it("AC-30l（目次の抽出）: 最初の ## より後のリストは返さない", () => {
+    const md = ["# t", "- [a](#a)", "## A", "- [b](#b)", "* [c](#c)"].join("\n");
+
+    expect(extractToc(md)).toEqual([{ text: "a", href: "#a" }]);
+  });
+
+  it("AC-30l（目次の抽出）: フェンスの中のリストは返さない", () => {
+    const md = ["# t", "```md", "- [x](#x)", "```", "~~~", "* [y](#y)", "~~~", "- [z](#z)", "## A"].join("\n");
+
+    expect(extractToc(md)).toEqual([{ text: "z", href: "#z" }]);
+  });
+
+  it("AC-30l（目次の抽出）: リンクでない箇条書き・リンク以外の文字を含む項目は返さない", () => {
+    const md = ["# t", "- ただの項目", "* 文字 [a](#a)", "- [b](#b) の説明", "- [c](#c)", "## A"].join("\n");
+
+    expect(extractToc(md)).toEqual([{ text: "c", href: "#c" }]);
+  });
+
+  it("AC-30l（目次の抽出）: 目次が無ければ空配列を返す", () => {
+    expect(extractToc("# t\n本文\n## A\n- [a](#a)")).toEqual([]);
+    expect(extractToc("")).toEqual([]);
+  });
+
+  it("AC-30l（目次の抽出）: CRLF でも同じ結果を返す", () => {
+    const lf = "# t\n- [a](#a)\n* [b](docs/x.md)\n## A\n- [c](#c)\n";
+
+    expect(extractToc(lf.replace(/\n/g, "\r\n"))).toEqual([
+      { text: "a", href: "#a" },
+      { text: "b", href: "docs/x.md" },
+    ]);
+  });
+});
+
+describe("parseMarkdownTable", () => {
+  it("AC-30m（表の解析）: ヘッダー名と行ごとのセルの配列を返し、区切り行（--- と :---:）を行に含めない", () => {
+    const body = ["| 項目 | 対応 |", "| --- | :---: |", "| a | b |", "| c | d |"].join("\n");
+
+    expect(parseMarkdownTable(body)).toEqual({
+      header: ["項目", "対応"],
+      rows: [
+        ["a", "b"],
+        ["c", "d"],
+      ],
+    });
+  });
+
+  it("AC-30m（表の解析）: 行頭・行末の | が無い表でも同じ結果を返す", () => {
+    const body = ["項目 | 対応", "--- | ---", "a | b"].join("\n");
+
+    expect(parseMarkdownTable(body)).toEqual({ header: ["項目", "対応"], rows: [["a", "b"]] });
+  });
+
+  it("AC-30m（表の解析）: セルの前後の空白を落とす", () => {
+    const body = ["|   項目\t|  対応  |", "|---|---|", "|  a  |\tb |"].join("\n");
+
+    expect(parseMarkdownTable(body)).toEqual({ header: ["項目", "対応"], rows: [["a", "b"]] });
+  });
+
+  it("AC-30m（表の解析）: バッククォート内の | とエスケープした \\| でセルを分けない", () => {
+    const body = ["| 項目 | 対応 |", "| --- | --- |", "| `a | b` | x \\| y |"].join("\n");
+
+    const table = parseMarkdownTable(body);
+
+    expect(table?.rows).toEqual([["`a | b`", "x \\| y"]]);
+  });
+
+  it("AC-30m（表の解析）: 表の前の地の文を読み飛ばし、最初の表だけを返す", () => {
+    const body = ["前置き", "", "| a |", "| --- |", "| 1 |", "", "| b |", "| --- |", "| 2 |"].join("\n");
+
+    expect(parseMarkdownTable(body)).toEqual({ header: ["a"], rows: [["1"]] });
+  });
+
+  it("AC-30m（表の解析）: 表が無い本文では null を返す", () => {
+    expect(parseMarkdownTable("本文だけ\n- 箇条書き\n")).toBeNull();
+    expect(parseMarkdownTable("")).toBeNull();
+  });
+
+  it("AC-30m（表の解析）: CRLF でも同じ結果を返す", () => {
+    const lf = "| a | b |\n| --- | --- |\n| 1 | 2 |\n";
+
+    expect(parseMarkdownTable(lf.replace(/\n/g, "\r\n"))).toEqual({ header: ["a", "b"], rows: [["1", "2"]] });
+  });
+});
+
+describe("findCellReferences", () => {
+  it("AC-30m（参照の判定）: # で始まるリンクと docs/ で始まる Markdown リンクの解決後のパスを返す", () => {
+    const cell = "[工夫](#工夫した点と理由) と [詳細](docs/scope.md#x)";
+
+    expect(findCellReferences(cell)).toEqual(["#工夫した点と理由", "docs/scope.md"]);
+  });
+
+  it("AC-30m（参照の判定）: リポジトリ内パスに当たるバッククォートを返す", () => {
+    expect(findCellReferences("`features/search/` と `README.md`")).toEqual(["features/search/", "README.md"]);
+  });
+
+  it("AC-30m（参照の判定）: 地の文だけのセルは空配列を返す", () => {
+    expect(findCellReferences("対応した")).toEqual([]);
+    expect(findCellReferences("")).toEqual([]);
+  });
+
+  it("AC-30m（参照の判定）: 外部 URL のリンクは参照に数えない", () => {
+    expect(findCellReferences("[a](https://example.com/docs/x.md) [b](mailto:x@example.com)")).toEqual([]);
+  });
+
+  it("AC-30m（参照の判定）: pnpm test のようなパスでないバッククォートは数えない", () => {
+    expect(findCellReferences("`pnpm test` `GITHUB_TOKEN` `Node.js`")).toEqual([]);
+  });
+});
+
+describe("findExternalReaderViolations", () => {
+  it("AC-30k（外部の読者向けの書き方の判定）: AC- に数字が続く文字列を行番号つきで返す", () => {
+    expect(findExternalReaderViolations("通常\nAC-30k を満たす\nAC-1")).toEqual([
+      { line: 2, text: "AC-30k を満たす" },
+      { line: 3, text: "AC-1" },
+    ]);
+  });
+
+  it("AC-30k（外部の読者向けの書き方の判定）: 「この README」を、間の空白の有無を問わず返す", () => {
+    expect(findExternalReaderViolations("この README は\nこのREADMEは\nこの  README")).toEqual([
+      { line: 1, text: "この README は" },
+      { line: 2, text: "このREADMEは" },
+      { line: 3, text: "この  README" },
+    ]);
+  });
+
+  it("AC-30k（外部の読者向けの書き方の判定）: Draft PR を返す", () => {
+    expect(findExternalReaderViolations("a\nDraft PR で確認")).toEqual([{ line: 2, text: "Draft PR で確認" }]);
+  });
+
+  it("AC-30k（外部の読者向けの書き方の判定）: マージ済み を返す", () => {
+    expect(findExternalReaderViolations("a\nb\nマージ済みの変更")).toEqual([{ line: 3, text: "マージ済みの変更" }]);
+  });
+
+  it("AC-30k（外部の読者向けの書き方の判定）: フェンスの中の該当も返す", () => {
+    const md = ["```", "AC-2", "```"].join("\n");
+
+    expect(findExternalReaderViolations(md)).toEqual([{ line: 2, text: "AC-2" }]);
+  });
+
+  it("AC-30k（外部の読者向けの書き方の判定）: 受け入れ条件（AC）・AC 番号・PR・マージは人間だけ・README 単独は返さない", () => {
+    const md = [
+      "受け入れ条件（AC）を書く",
+      "AC 番号を振る",
+      "PR を作る",
+      "マージは人間だけが行う",
+      "README に書く",
+      "ACTION と AC-x",
+    ].join("\n");
+
+    expect(findExternalReaderViolations(md)).toEqual([]);
+  });
+
+  it("AC-30k（外部の読者向けの書き方の判定）: CRLF でも行番号は同じで、text に CR を含めない", () => {
+    expect(findExternalReaderViolations("a\r\nAC-3\r\n")).toEqual([{ line: 2, text: "AC-3" }]);
   });
 });
 
