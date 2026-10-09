@@ -991,6 +991,16 @@ const EXPECTED_DEVICE_H3 = [
   "テストの検出力を確かめる",
 ];
 
+/** 「AI利用レポート」の ### （6 つ。名前と順） */
+const EXPECTED_AI_H3 = [
+  "AI利用について考慮した点",
+  "使ったツールと任せた範囲",
+  "進め方",
+  "自分で判断・理解した点",
+  "AIの出力で注意した点",
+  "効果と限界、次にやるなら",
+];
+
 /** 課題の要件との対応の表の 1 列目（9 項目。名前と順） */
 const REQUIREMENT_ITEMS = [
   "キーワード検索と一覧",
@@ -1026,6 +1036,10 @@ describe("README の見出し", () => {
 
   it("AC-30b（前提）: 「工夫した点と理由」の ### が仕様 4.1 の 7 つの名前と順で完全一致する", () => {
     expect(h3sByH2(readme).get("工夫した点と理由")).toEqual(EXPECTED_DEVICE_H3);
+  });
+
+  it("AC-30d（前提）: 「AI利用レポート」の ### が仕様 4.1 の 6 つの名前と順で完全一致する", () => {
+    expect(h3sByH2(readme).get("AI利用レポート")).toEqual(EXPECTED_AI_H3);
   });
 
   it("AC-30a〜AC-30d（前提）: AI利用レポート以外の ## 節に ### が無い", () => {
@@ -1154,8 +1168,7 @@ describe("AC-30h・AC-30i: README のリンクと分量", () => {
     expect(["docs/setup.md", "docs/structure.md", "docs/scope.md"].filter((l) => !links.includes(l))).toEqual([]);
   });
 
-  // AI利用レポートは T13 で加える
-  it.each(["概要", "セットアップ", "課題の要件との対応", "テスト", "構成", "範囲と制約"])(
+  it.each(["概要", "セットアップ", "課題の要件との対応", "テスト", "構成", "範囲と制約", "AI利用レポート"])(
     "AC-30i: 「工夫した点と理由」の本文は「%s」の本文より長い",
     (heading) => {
       const devices = countProseChars(readmeSection("工夫した点と理由"));
@@ -1164,6 +1177,10 @@ describe("AC-30h・AC-30i: README のリンクと分量", () => {
       expect(devices).toBeGreaterThan(other);
     },
   );
+
+  it("AC-30j: AI利用レポートの本文が 3000 字以下である", () => {
+    expect(countProseChars(readmeSection("AI利用レポート"))).toBeLessThanOrEqual(3000);
+  });
 });
 
 describe("AC-30m: README の課題の要件との対応", () => {
@@ -1207,13 +1224,8 @@ describe("AC-30n: README のテスト", () => {
 });
 
 describe("AC-30k: README の外部の読者向けの書き方", () => {
-  it("AC-30k: AI利用レポートの節を除く範囲に AC-n・この README・Draft PR・マージ済みが無い", () => {
-    // AI利用レポートの節は T13 で検査する。見出し行と本文を取り除いた残りを対象にする
-    const lines = splitLines(readme).join("\n");
-    const ai = getSection(lines, "AI利用レポート");
-    const target = ai === null ? lines : lines.replace(`## AI利用レポート\n${ai}`, "");
-
-    expect(findExternalReaderViolations(target)).toEqual([]);
+  it("AC-30k: README 全体に AC-n・この README・Draft PR・マージ済みが無い", () => {
+    expect(findExternalReaderViolations(readme)).toEqual([]);
   });
 });
 
@@ -1289,22 +1301,32 @@ describe("AC-30d: README の AI利用レポート", () => {
     expect(missingStrings(body, ["AI", "作業", "細分化", "積み上げ", "GitHub", "ワークフロー"])).toEqual([]);
   });
 
-  it("AC-30d: 使ったツールに Claude Code が書かれている", () => {
-    const body = readmeSection("使ったツール");
+  it("AC-30d: 使ったツールと任せた範囲に Claude Code・Claude Opus 5.5・Claude Sonnet 5.5・人間 が書かれている", () => {
+    const body = readmeSection("使ったツールと任せた範囲");
 
-    expect(missingStrings(body, ["Claude Code"])).toEqual([]);
+    expect(countProseChars(body)).toBeGreaterThan(0);
+    expect(missingStrings(body, ["Claude Code", "Claude Opus 5.5", "Claude Sonnet 5.5", "人間"])).toEqual([]);
   });
 
-  it("AC-30d: 進め方に仕様駆動・TDD・CLAUDE.md・.claude/・scripts/verify.sh が書かれている", () => {
+  it("AC-30d: 進め方に仕様駆動・TDD・ハーネス・CLAUDE.md・.claude/・scripts/verify.sh が書かれている", () => {
     const body = readmeSection("進め方");
 
-    expect(missingStrings(body, ["仕様駆動", "TDD", "CLAUDE.md", ".claude/", "scripts/verify.sh"])).toEqual([]);
+    expect(missingStrings(body, ["仕様駆動", "TDD", "ハーネス", "CLAUDE.md", ".claude/", "scripts/verify.sh"])).toEqual([]);
   });
 
-  it("AC-30d: 人間が判断・修正した点に番号つきの具体例（仕様・計画・ADR・PR・Issue）が 1 つ以上ある", () => {
-    const body = readmeSection("人間が判断・修正した点");
+  it("AC-30d: 自分で判断・理解した点が一人称（私・自分）で書かれ、番号つきの具体例（仕様・計画・ADR・PR・Issue）が 1 つ以上ある", () => {
+    const body = readmeSection("自分で判断・理解した点");
 
+    expect(countProseChars(body)).toBeGreaterThan(0);
+    expect(body).toMatch(/私|自分/);
     expect(findNumberedReferences(body).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("AC-30d: 効果と限界、次にやるならに 効果・限界・次 が書かれている", () => {
+    const body = readmeSection("効果と限界、次にやるなら");
+
+    expect(countProseChars(body)).toBeGreaterThan(0);
+    expect(missingStrings(body, ["効果", "限界", "次"])).toEqual([]);
   });
 
   it("AC-30d: AIの出力で注意した点に番号つきの具体例（仕様・計画・ADR・PR・Issue）が 1 つ以上ある", () => {
