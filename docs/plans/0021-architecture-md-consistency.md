@@ -68,7 +68,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 > 分け方の考え方: コミット前に `verify.sh --quick` の PASS が必要なため、RED のままのテストはコミットしない。テストと `docs/architecture.md` の修正を同じコミット（T1）に入れ、RED は作業ツリー上で確認する。T2 はコードを変えない検証・レビュー。
 
-- [ ] **T1: 構造検査テストの追加と architecture.md の修正（AC-1〜AC-10 の RED → GREEN）**
+- [x] **T1: 構造検査テストの追加と architecture.md の修正（AC-1〜AC-10 の RED → GREEN）**
   - 対応 AC: AC-1〜AC-10
   - 0. 出典の確認（書く前）: 1.2 の表の出典を読み直す。親仕様 0001 の 1 節・2 節・4.1・4.2・7 節、`README.md` の「概要」、`lib/github/types.ts`、ADR 0005 の 68・81・82 行付近、`lib/search/query.ts`・`lib/github/client.ts`・`lib/github/mappers.ts` の検証、`lib/github/http.ts` の `GITHUB_TOKEN` の扱い、仕様 0003 の AC-23a〜AC-23d。あわせて `app/**/route.ts` と `features/**/actions*` が無いこと、`package.json` に `zod` が無いことを確認する。下書きと食い違えば、事実の側に合わせて下書きを直す（確認できないことは書かない）。
   - 先に書くテスト: `tests/docs/architecture.test.ts`
@@ -199,3 +199,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: 計画作成（draft）。未着手。人間の承認（特に Q1・Q3・Q5・Q6・Q7・Q8）を得てから T1 に入る。`/issue split` はせず 1 PR で進める想定（2 タスク）。
 
 - 2026-10-09: 人間が計画を承認（Q1〜Q11 すべて推奨どおり）。Status: in-progress。T1 から着手。
+
+- 2026-10-09: T1 完了。出典の確認: ADR 0005 の 68 行（利用者に返すのは公開データだけ。ディスクのキャッシュには GitHub の生の応答が入る）と 81 行（運用上の対策: `GITHUB_TOKEN` は公開リポジトリだけを読める最小権限）、`lib/github/types.ts` の 3 つの型、`lib/search/query.ts`・`lib/github/client.ts`・`lib/github/mappers.ts` の検証、`package.json` に zod が無いこと、`app/` に `route.ts` が無いこと、`features/` に actions が無いこと。RED（現在の `docs/architecture.md` に対して）: 33 件中 13 件が失敗（AC-1 1、AC-2 1、AC-3 1、AC-4 3、AC-5 2、AC-6 1、AC-7 1、AC-8 1、AC-9 1、AC-10 1。いずれも期待値の不一致）、補助関数の単体テスト 20 件は緑。GREEN: `docs/architecture.md` を直し、33 件すべて PASS、`verify.sh --quick` PASS。差分は仕様 4.1 の箇所だけ（冒頭の注意書き、1 節、2 節の 3 行、3 節の図と `features/<名前>/` の行、4 節、5 節の 4 項目）。変異 16 件（未記入・注意書き・1 節・2 節の 3 行・図〈Route Handlers、GitHub API〉・アクション・4 節〈永続化しない、RepoDetail〉・キャッシュ〈旧記述、生の応答〉・zod・認証・認可〈`<方針>`、サーバー側だけ〉・Route Handler の項目）を検出、陰性 1 件は通過、SHA-256 で復元を確認。不可視文字 0 件。注意: test-writer の最初の実行は、利用上限（セッションの上限）に達して途中で止まったため、上限のリセット後に同じ依頼をやり直した。
