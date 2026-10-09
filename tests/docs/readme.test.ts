@@ -1,9 +1,13 @@
 // @vitest-environment node
 //
 // README.md と外部ファイル（docs/setup.md・docs/structure.md・docs/scope.md）の構造を検査する（仕様 0012）。
-// 対象: 見出し・必須項目・pnpm コマンドと scripts の一致・相対パスの実在・秘密らしい文字列の不在・外部ファイルへの参照・
-// 「工夫した点と理由」が他の節より長いこと。
+// 対象: 見出し・目次・課題の要件との対応の表・必須項目・pnpm コマンドと scripts の一致・相対パスの実在・
+// 秘密らしい文字列の不在・外部ファイルへの参照・外部の読者向けの書き方（AC-30k）・
+// 「工夫した点と理由」が他の節より長いこと（AC-30i）・AI利用レポートの字数の上限（AC-30j）。
 // 限界:
+// - 目次と表のアンカー（#…）の綴りは検査しない（GitHub の規則との一致は、push 後に表示で確かめる）。
+// - 「次」のような 1 文字の語は、他の語の一部でも通る。
+// - AC-30k は決まった文字列の有無だけを見る。言い換えた改訂の経緯（「以前の版では」など）は検出しない（レビューで確認する）。
 // - 行ベースの簡易解析。Setext 形式の見出し（`===` の下線）・HTML の見出し・参照形式のリンク（`[a][b]`）は扱わない。
 // - 相対パスの「未作成」除外は行単位。「未作成」と書いた行にある `components/` 配下のパスだけを除く
 //   （同じ行の他のパスは検査する）。
@@ -1042,12 +1046,20 @@ describe("README の見出し", () => {
     expect(h3sByH2(readme).get("AI利用レポート")).toEqual(EXPECTED_AI_H3);
   });
 
-  it("AC-30a〜AC-30d（前提）: AI利用レポート以外の ## 節に ### が無い", () => {
+  it("AC-30a〜AC-30d（前提）: 工夫した点と理由・AI利用レポート以外の ## 節に ### が無い", () => {
     const withH3 = [...h3sByH2(readme)]
       .filter(([h2, h3s]) => h2 !== "AI利用レポート" && h2 !== "工夫した点と理由" && h3s.length > 0)
       .map(([h2]) => h2);
 
     expect(withH3).toEqual([]);
+  });
+
+  it("AC-30a〜AC-30d（前提）: 最初の ## より前（目次の位置など）に ### が無い", () => {
+    const headings = extractHeadings(readme, [2, 3]);
+    const firstH2 = headings.findIndex((h) => h.level === 2);
+
+    expect(firstH2).toBeGreaterThanOrEqual(0);
+    expect(headings.slice(0, firstH2)).toEqual([]);
   });
 });
 
