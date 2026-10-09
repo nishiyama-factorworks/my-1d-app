@@ -690,15 +690,17 @@ const readme = readFileSync(path.join(root, "README.md"), "utf-8");
 
 const EXPECTED_HEADINGS: Heading[] = [
   { level: 2, text: "概要" },
+  { level: 2, text: "工夫した点と理由" },
+  { level: 3, text: "Watcher数の取得元" },
+  { level: 3, text: "GitHub APIをサーバー側だけで呼ぶ" },
+  { level: 3, text: "検索条件をURLで持つ" },
+  { level: 3, text: "1,000件の上限の扱い" },
+  { level: 3, text: "取得結果のキャッシュ" },
+  { level: 3, text: "エラーを状態として見せる" },
+  { level: 3, text: "テストの検出力を確かめる" },
   { level: 2, text: "セットアップ" },
-  { level: 2, text: "構成と判断" },
-  { level: 3, text: "画面構成とルーティング" },
-  { level: 3, text: "ディレクトリ構成" },
-  { level: 3, text: "工夫した点と理由" },
+  { level: 2, text: "構成" },
   { level: 2, text: "範囲と制約" },
-  { level: 3, text: "プロダクション想定の範囲" },
-  { level: 3, text: "対応しなかった事項" },
-  { level: 3, text: "既知の制約" },
   { level: 2, text: "AI利用レポート" },
   { level: 3, text: "AI利用について考慮した点" },
   { level: 3, text: "使ったツール" },
@@ -723,7 +725,7 @@ const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "ut
 /** README の節の本文を返す。見出しが無ければテストを失敗させる */
 function readmeSection(heading: string): string {
   const body = getSection(readme, heading);
-  if (body === null) throw new Error(`README に見出し「${heading}」が無い`);
+  if (body === null) throw new Error(`見出しが無い: README に「${heading}」が無い`);
   return body;
 }
 
@@ -747,20 +749,20 @@ describe("AC-30a: README の概要とセットアップ", () => {
     expect(missingStrings(body, ["GitHub", "リポジトリ", "検索", "詳細"])).toEqual([]);
   });
 
-  it("AC-30a: セットアップに pnpm install・dev・build・start・test・test:e2e と bash scripts/verify.sh が書かれている", () => {
-    const body = readmeSection("セットアップ");
-    const names = findPnpmCommands(body).map((c) => c.name);
+  it("AC-30a: README のセットアップに pnpm install・pnpm dev が書かれている", () => {
+    const names = findPnpmCommands(readmeSection("セットアップ")).map((c) => c.name);
 
-    expect(
-      ["install", "dev", "build", "start", "test", "test:e2e"].filter((n) => !names.includes(n)),
-    ).toEqual([]);
-    expect(missingStrings(body, ["bash scripts/verify.sh"])).toEqual([]);
+    expect(["install", "dev"].filter((n) => !names.includes(n))).toEqual([]);
   });
 
-  it("AC-30a: セットアップに GITHUB_TOKEN が任意で、未設定でも動くことが書かれている", () => {
+  it("AC-30a: README のセットアップに GITHUB_TOKEN が任意で、未設定でも動くことが書かれている", () => {
     const body = readmeSection("セットアップ");
 
     expect(missingStrings(body, ["GITHUB_TOKEN", "任意", "未設定"])).toEqual([]);
+  });
+
+  it("AC-30a: README のセットアップから docs/setup.md へリンクしている", () => {
+    expect(findMarkdownLinks(readmeSection("セットアップ"))).toContain("docs/setup.md");
   });
 
   it("AC-30a: README の pnpm <名前> は pnpm 自体のコマンド（install）を除き、すべて package.json の scripts にある", () => {
@@ -777,31 +779,55 @@ describe("AC-30a: README の概要とセットアップ", () => {
   });
 });
 
-describe("AC-30b: README の構成と判断", () => {
-  it("AC-30b: 画面構成とルーティングに / と /repos/[owner]/[repo] が書かれている", () => {
-    const body = readmeSection("画面構成とルーティング");
+/** 「工夫した点と理由」の 7 小節と、各小節の本文にあるべき語 */
+const DEVICE_SECTIONS: { heading: string; strings: string[]; patterns: RegExp[] }[] = [
+  { heading: "Watcher数の取得元", strings: ["subscribers_count"], patterns: [] },
+  { heading: "GitHub APIをサーバー側だけで呼ぶ", strings: ["サーバー側"], patterns: [] },
+  { heading: "検索条件をURLで持つ", strings: ["URL"], patterns: [] },
+  { heading: "1,000件の上限の扱い", strings: ["1,000"], patterns: [] },
+  { heading: "取得結果のキャッシュ", strings: [], patterns: [/300\s*秒/, /600\s*秒/] },
+  { heading: "エラーを状態として見せる", strings: ["エラー"], patterns: [] },
+  { heading: "テストの検出力を確かめる", strings: ["変異"], patterns: [] },
+];
+
+describe("AC-30b: README の工夫した点と理由", () => {
+  it.each(DEVICE_SECTIONS)("AC-30b: 「$heading」に本文があり、必要な語がその小節の本文にある", (section) => {
+    const body = readmeSection(section.heading);
+
+    expect(countProseChars(body)).toBeGreaterThan(0);
+    expect(missingStrings(body, section.strings)).toEqual([]);
+    expect(missingPatterns(body, section.patterns)).toEqual([]);
+  });
+});
+
+describe("AC-30b: README の構成", () => {
+  it("AC-30b: 構成に / と /repos/[owner]/[repo] が書かれている", () => {
+    const body = readmeSection("構成");
 
     expect(missingStrings(body, ["`/`", "/repos/[owner]/[repo]"])).toEqual([]);
   });
 
-  it("AC-30b: ディレクトリ構成に app/ features/ lib/ components/ tests/ e2e/ docs/ が書かれ、components/ は未作成と明記されている", () => {
-    const body = readmeSection("ディレクトリ構成");
-    const dirs = ["app/", "features/", "lib/", "components/", "tests/", "e2e/", "docs/"];
-    const componentsLines = body
-      .split(/\r?\n/)
-      .filter((line) => line.includes("`components/`"));
+  it("AC-30b: 構成から docs/structure.md へリンクしている", () => {
+    expect(findMarkdownLinks(readmeSection("構成"))).toContain("docs/structure.md");
+  });
+});
 
-    expect(missingStrings(body, dirs.map((d) => `\`${d}\``))).toEqual([]);
-    // 「未作成」は components/ と同じ行にあること（別の行の「未作成」では通さない）
-    expect(componentsLines.filter((line) => line.includes("未作成"))).not.toEqual([]);
+describe("AC-30h・AC-30i: README のリンクと分量", () => {
+  it("AC-30h: README 全体に docs/setup.md・docs/structure.md・docs/scope.md へのリンクがある", () => {
+    const links = findMarkdownLinks(readme);
+
+    expect(["docs/setup.md", "docs/structure.md", "docs/scope.md"].filter((l) => !links.includes(l))).toEqual([]);
   });
 
-  it("AC-30b: 工夫した点と理由に subscribers_count・サーバー側・URL・1,000 件・300 秒・600 秒が書かれている", () => {
-    const body = readmeSection("工夫した点と理由");
+  it.each(["セットアップ", "構成", "範囲と制約"])(
+    "AC-30i: 「工夫した点と理由」の本文は「%s」の本文より長い",
+    (heading) => {
+      const devices = countProseChars(readmeSection("工夫した点と理由"));
+      const other = countProseChars(readmeSection(heading));
 
-    expect(missingStrings(body, ["subscribers_count", "サーバー側", "URL"])).toEqual([]);
-    expect(missingPatterns(body, [/1,?000\s*件/, /300\s*秒/, /600\s*秒/])).toEqual([]);
-  });
+      expect(devices).toBeGreaterThan(other);
+    },
+  );
 });
 
 // ---- T3: 後半（範囲と制約・AI利用レポート）のキーワード検査 ----
@@ -857,33 +883,25 @@ const PRODUCTION_ITEMS = [
 ];
 
 describe("AC-30c: README の範囲と制約", () => {
-  it.each(PRODUCTION_ITEMS)("AC-30c: プロダクション想定の範囲に「%s」が書かれている", (item) => {
-    const body = readmeSection("プロダクション想定の範囲");
-
-    expect(missingStrings(body, [item])).toEqual([]);
-  });
-
-  it("AC-30c: 対応しなかった事項にアプリのタイトル・仮の定数・対応ブラウザ・ダークモードが書かれている", () => {
-    const body = readmeSection("対応しなかった事項");
-
-    expect(missingStrings(body, ["アプリのタイトル", "仮の定数", "対応ブラウザ", "ダークモード"])).toEqual([]);
-  });
-
-  it("AC-30c: 対応しなかった事項に運営上の項目（評価基準・期限・公開設定）が書かれていない", () => {
-    const body = readmeSection("対応しなかった事項");
-
-    expect(findOperationalTerms(body)).toEqual([]);
-  });
-
-  it("AC-30c: 既知の制約に 1,000 件の上限とレート制限が書かれている", () => {
-    const body = readmeSection("既知の制約");
+  it("AC-30c: 範囲と制約に 1,000 件の上限とレート制限が書かれている", () => {
+    const body = readmeSection("範囲と制約");
 
     expect(missingPatterns(body, [/1,?000\s*件/])).toEqual([]);
     expect(missingStrings(body, ["レート制限"])).toEqual([]);
   });
+
+  it("AC-30c: 範囲と制約から docs/scope.md へリンクしている", () => {
+    expect(findMarkdownLinks(readmeSection("範囲と制約"))).toContain("docs/scope.md");
+  });
 });
 
 describe("AC-30d: README の AI利用レポート", () => {
+  it("AC-30d: AI利用について考慮した点に人間の3点の趣旨（AI と作業、細分化と積み上げ、GitHub とワークフロー）が書かれている", () => {
+    const body = readmeSection("AI利用について考慮した点");
+
+    expect(missingStrings(body, ["AI", "作業", "細分化", "積み上げ", "GitHub", "ワークフロー"])).toEqual([]);
+  });
+
   it("AC-30d: 使ったツールに Claude Code が書かれている", () => {
     const body = readmeSection("使ったツール");
 
@@ -906,22 +924,6 @@ describe("AC-30d: README の AI利用レポート", () => {
     const body = readmeSection("AIの出力で注意した点");
 
     expect(findNumberedReferences(body).length).toBeGreaterThanOrEqual(1);
-  });
-});
-
-describe("AC-30f: README の相対パス", () => {
-  it("AC-30f: README の相対パスが 1 件以上あり、すべて大文字小文字まで一致して実在する", () => {
-    const paths = findRelativePaths(readme);
-    const missing = paths.filter((p) => !existsExactCase(root, p));
-
-    expect(paths.length).toBeGreaterThan(0);
-    expect(missing).toEqual([]);
-  });
-});
-
-describe("AC-30g: README の秘密らしい文字列", () => {
-  it("AC-30g: README にトークン形式の文字列と GITHUB_TOKEN= に続く値が無い", () => {
-    expect(findSecretLike(readme)).toEqual([]);
   });
 });
 
@@ -1045,6 +1047,12 @@ describe("AC-30c: docs/scope.md", () => {
   });
 });
 
+/** README と外部ファイルの共通検査（AC-30f・AC-30g）の対象。baseDir はリンクの解決の起点（README はルート） */
+const COMMON_DOCS = [
+  { file: "README.md", baseDir: "", minPaths: 1 },
+  ...EXTERNAL_DOCS.map((d) => ({ file: d.file, baseDir: "docs", minPaths: d.minPaths })),
+];
+
 describe("外部ファイル共通の検査", () => {
   it.each(EXTERNAL_DOCS)("AC-30a: $file の pnpm <名前> は pnpm 自体のコマンドを除きすべて scripts にある", (doc) => {
     const names = findPnpmCommands(readExternal(doc.file))
@@ -1057,15 +1065,15 @@ describe("外部ファイル共通の検査", () => {
     expect(unknown).toEqual([]);
   });
 
-  it.each(EXTERNAL_DOCS)("AC-30f: $file の相対パスが 1 件以上あり、すべて大文字小文字まで一致して実在する", (doc) => {
-    const paths = findRelativePaths(readExternal(doc.file), "docs");
+  it.each(COMMON_DOCS)("AC-30f: $file の相対パスが 1 件以上あり、すべて大文字小文字まで一致して実在する", (doc) => {
+    const paths = findRelativePaths(readExternal(doc.file), doc.baseDir);
     const missing = paths.filter((p) => !existsExactCase(root, p));
 
     expect(paths.length).toBeGreaterThanOrEqual(doc.minPaths);
     expect(missing).toEqual([]);
   });
 
-  it.each(EXTERNAL_DOCS)("AC-30g: $file にトークン形式の文字列と GITHUB_TOKEN= に続く値が無い", (doc) => {
+  it.each(COMMON_DOCS)("AC-30g: $file にトークン形式の文字列と GITHUB_TOKEN= に続く値が無い", (doc) => {
     expect(findSecretLike(readExternal(doc.file))).toEqual([]);
   });
 });
