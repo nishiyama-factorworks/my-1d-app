@@ -1,6 +1,6 @@
 # 0021: docs/architecture.md の食い違いと未記入の節を直す
 
-- Status: draft
+- Status: approved
 - 作成日: 2026-10-09
 - Issue: #41
 - 関連: `docs/architecture.md`、`docs/adr/0005-github-fetch-revalidate.md`、`0001-github-repo-search.md`（親仕様。4.2 の Non-goals）、`0012-readme-ai-report.md`（4.2 でこの文書の変更を対象外としていた）
@@ -83,3 +83,4 @@
 | 日付 | 変更 | 理由 |
 | --- | --- | --- |
 | 2026-10-09 | 初版 | Issue #41（PR #39 のレビューで見つかった食い違いと、テンプレートの未記入） |
+| 2026-10-09 | 人間が承認（Status: approved） | 承認ゲート① |
