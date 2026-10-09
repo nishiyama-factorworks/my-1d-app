@@ -8,6 +8,7 @@
 // - findListItem は「行頭が `- <ラベル>`」の最初の 1 行だけを返す。項目が複数行にまたがる場合、
 //   2 行目以降の語は見ない（現状の 5 節の項目はすべて 1 行）。インデントした入れ子の項目は拾わない。
 // - 文章の妥当性・出典との一致は検査しない（レビューで確認する）。語の有無だけを見る。
+// - findTableRow は、エスケープしたパイプ（\|）をセルの区切りとして扱わない（現状の 2 節の表には無い）。
 // - 補助関数は readme.test.ts と共有していない（3 か所目の利用が出たときに共通化する）。
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -180,7 +181,7 @@ describe("getPreamble", () => {
     const md = ["# t", "```", "## 見えるだけ", "```", "続き", "## A", "x"].join("\n");
 
     expect(getPreamble(md)).toContain("続き");
-    expect(getPreamble(md)).not.toContain("x\n");
+    expect(getPreamble(md)).not.toContain("## A");
   });
 
   it("AC-2（前文の取得）: CRLF でも同じ結果になる", () => {

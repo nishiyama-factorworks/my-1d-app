@@ -4,7 +4,7 @@
 
 ## 1. システム概要
 
-GitHub のリポジトリをキーワードで検索し、一覧から選んだリポジトリの詳細（言語・Star 数・Watcher 数・Fork 数・Issue 数）を別ページで確認できる Web アプリ。ログイン不要の閲覧者向け。Next.js（App Router）の Server Components が、サーバー側で GitHub REST API を呼び、結果を描画して返す。データベースは持たず、検索条件は URL のクエリで持つ。
+GitHub のリポジトリをキーワードで検索し、一覧から選んだリポジトリの詳細（言語・Star 数・Watcher 数・Fork 数・Issue 数）を別ページで確認できる Web アプリ。ログイン不要の閲覧者向け。Next.js（App Router）の Server Components が GitHub REST API を呼び、結果を描画して返す。データベースは持たず、検索条件は URL のクエリで持つ。
 
 ## 2. 技術スタック
 
@@ -12,7 +12,7 @@ GitHub のリポジトリをキーワードで検索し、一覧から選んだ�
 | -------------- | --------------------------------------------- | ------------------ |
 | フレームワーク | Next.js（App Router）/ TypeScript strict      | docs/adr/0001 など |
 | スタイリング   | Tailwind CSS v4 + shadcn/ui                   | docs/adr/0003      |
-| データ保存     | なし（DB を持たない。応答の一時的なキャッシュは 5 節） | 仕様 0001 の 7 節、ADR 0005 |
+| データ保存     | なし（DB を持たない。GitHub API の応答の fetch キャッシュは 5 節） | 仕様 0001 の 7 節、ADR 0005 |
 | 認証           | なし（ログイン不要）                          | 仕様 0001 の 4.2   |
 | テスト         | Vitest + Testing Library + jsdom（単体/結合） | 仕様 0002          |
 | E2E（任意）    | Playwright（`@playwright/test`）+ 偽の GitHub API | 仕様 0013、ADR 0006 |
@@ -21,7 +21,7 @@ GitHub のリポジトリをキーワードで検索し、一覧から選んだ�
 ## 3. 構成と責務
 
 ```
-ブラウザ ──> Next.js (Server Components) ──> GitHub API（`lib/github/` 経由）
+ブラウザ ──> Next.js (Server Components) ──> GitHub API（lib/github/ 経由）
 ```
 
 `src/` は使わず、ルート直下に置く（仕様 0002 で決定）。
@@ -46,7 +46,7 @@ GitHub のリポジトリをキーワードで検索し、一覧から選んだ�
 データは永続化しない（DB なし）。アプリ内で扱う型は `lib/github/types.ts` の次の 3 つで、GitHub API の応答は `lib/github/` で検証・変換してからこの型で渡す。
 
 - `SearchRepositoriesResult`: 検索結果（総件数 `totalCount` と `RepoSummary` の配列）
-- `RepoSummary`: 一覧の 1 件（リポジトリ名、オーナー名、オーナーのアイコン URL）
+- `RepoSummary`: 一覧の 1 件（リポジトリのフルネーム〈`owner/repo`〉、オーナー名、オーナーのアイコン URL）
 - `RepoDetail`: 詳細（`RepoSummary` の項目に、言語、Star 数、Watcher 数〈`subscribers_count` から〉、Fork 数、Issue 数、GitHub の URL を加えたもの）
 
 GitHub API の項目との対応は、親仕様 0001 の 7 節にある。

@@ -1,6 +1,6 @@
 # 0021: docs/architecture.md の食い違いと未記入の節を直す 実装計画
 
-Status: in-progress              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
+Status: done              <!-- draft | in-progress | done  ※ SessionStart hook が "Status: in-progress" の行を検出します。この行は変えないこと -->
 
 - Issue: #41
 - 対応する仕様: docs/specs/0021-architecture-md-consistency.md
@@ -119,7 +119,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象: `tests/docs/architecture.test.ts`（新規）、`docs/architecture.md`（変更）、本計画の進捗メモ
   - 完了条件: 新しいテストがすべて通り、既存テストは変更なしで通る。`bash scripts/verify.sh --quick` PASS。4.2 の範囲外に差分が無いことを `git diff` で確認済み。変異 1〜13（別変異を含む）がすべて検出され、`docs/architecture.md` が元どおりであることを確認済み。コミットは 1 つ（例: `docs(architecture): 食い違いと未記入の節を実態に合わせて直す` + 本文末尾に `Refs #41`。Q9）。
 
-- [ ] **T2: 最終確認とレビュー**
+- [x] **T2: 最終確認とレビュー**
   - 対応 AC: なし（AC-1〜AC-10 の総合確認）
   - 先に書くテスト: なし（コードを変えない）
   - 実装対象: 本計画の進捗メモと `Status`
@@ -201,3 +201,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: 人間が計画を承認（Q1〜Q11 すべて推奨どおり）。Status: in-progress。T1 から着手。
 
 - 2026-10-09: T1 完了。出典の確認: ADR 0005 の 68 行（利用者に返すのは公開データだけ。ディスクのキャッシュには GitHub の生の応答が入る）と 81 行（運用上の対策: `GITHUB_TOKEN` は公開リポジトリだけを読める最小権限）、`lib/github/types.ts` の 3 つの型、`lib/search/query.ts`・`lib/github/client.ts`・`lib/github/mappers.ts` の検証、`package.json` に zod が無いこと、`app/` に `route.ts` が無いこと、`features/` に actions が無いこと。RED（現在の `docs/architecture.md` に対して）: 33 件中 13 件が失敗（AC-1 1、AC-2 1、AC-3 1、AC-4 3、AC-5 2、AC-6 1、AC-7 1、AC-8 1、AC-9 1、AC-10 1。いずれも期待値の不一致）、補助関数の単体テスト 20 件は緑。GREEN: `docs/architecture.md` を直し、33 件すべて PASS、`verify.sh --quick` PASS。差分は仕様 4.1 の箇所だけ（冒頭の注意書き、1 節、2 節の 3 行、3 節の図と `features/<名前>/` の行、4 節、5 節の 4 項目）。変異 16 件（未記入・注意書き・1 節・2 節の 3 行・図〈Route Handlers、GitHub API〉・アクション・4 節〈永続化しない、RepoDetail〉・キャッシュ〈旧記述、生の応答〉・zod・認証・認可〈`<方針>`、サーバー側だけ〉・Route Handler の項目）を検出、陰性 1 件は通過、SHA-256 で復元を確認。不可視文字 0 件。注意: test-writer の最初の実行は、利用上限（セッションの上限）に達して途中で止まったため、上限のリセット後に同じ依頼をやり直した。
+
+- 2026-10-09: T2 完了。`reviewer`: Approve（Critical・Major なし）。出典との一致、4.2 の範囲外が変わっていないこと、削除した項目の内容が他で失われていないこと、テストの検出力と過検出、秘密情報・不可視文字（node の全文走査）を確認。Minor 2 件と Nit を反映: (1) 2 節「データ保存」の「応答の一時的なキャッシュ」を、ADR 0005 の 82 行（ディスクのキャッシュは期限が切れても残る）に合わせて「GitHub API の応答の fetch キャッシュは 5 節」に直した（計画 Q6 で承認した下書きの「一時的な」を外した）、(2) テストの常に通る assertion（`not.toContain` の入力に末尾の改行が無く何も検証していなかった）を `not.toContain("## A")` に直した、(3) 図のバッククォート、4 節の `RepoSummary` の「リポジトリ名」を「フルネーム（`owner/repo`）」に、1 節の重複した言い回し、テスト先頭に `findTableRow` の限界を追記。見送り: 2 節の表の桁そろえ（`docs/` は `.prettierignore` の対象で、E2E の行も以前からずれている。見た目だけの問題）。変異を再実行して 17 件問題なし。`bash scripts/verify.sh`（full）は PASS。`security-reviewer` は計画の Q7 のとおり省略。Status: done。
