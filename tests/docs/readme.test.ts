@@ -924,3 +924,148 @@ describe("AC-30g: README の秘密らしい文字列", () => {
     expect(findSecretLike(readme)).toEqual([]);
   });
 });
+
+// ---- T6: 外部ファイル（docs/setup.md・docs/structure.md・docs/scope.md）の検査 ----
+// 読み込みは必ず it の中で行う（最上位で読むと、ファイルが無いときに収集段階で全体が落ちるため）。
+
+const EXTERNAL_DOCS = [
+  {
+    file: "docs/setup.md",
+    title: "セットアップ",
+    sections: ["前提", "手順", "テスト", "環境変数"],
+    minPaths: 1,
+    minScripts: 1,
+  },
+  {
+    file: "docs/structure.md",
+    title: "構成",
+    sections: ["画面構成とルーティング", "ディレクトリ構成"],
+    minPaths: 1,
+    minScripts: 0,
+  },
+  {
+    file: "docs/scope.md",
+    title: "範囲と制約",
+    sections: ["プロダクション想定の範囲", "対応しなかった事項", "既知の制約"],
+    minPaths: 1,
+    minScripts: 0,
+  },
+];
+
+/** 外部ファイルの本文を返す。呼び出しは it の中から行う */
+function readExternal(file: string): string {
+  return readFileSync(path.join(root, file), "utf-8");
+}
+
+/** 外部ファイルの節の本文を返す。見出しが無ければテストを失敗させる */
+function externalSection(file: string, heading: string): string {
+  const body = getSection(readExternal(file), heading);
+  if (body === null) throw new Error(`${file} に見出し「${heading}」が無い`);
+  return body;
+}
+
+describe("AC-30h: 外部ファイルの実在と見出し", () => {
+  it.each(EXTERNAL_DOCS.map((d) => d.file))("AC-30h: %s が実在する（大文字小文字まで一致）", (file) => {
+    expect(existsExactCase(root, file)).toBe(true);
+  });
+
+  it.each(EXTERNAL_DOCS)("AC-30h: $file の # と ## が仕様 4.1 の名前と順で過不足なく並ぶ", (doc) => {
+    const expected: Heading[] = [
+      { level: 1, text: doc.title },
+      ...doc.sections.map((text) => ({ level: 2 as const, text })),
+    ];
+
+    expect(extractHeadings(readExternal(doc.file), [1, 2])).toEqual(expected);
+  });
+});
+
+describe("AC-30a: docs/setup.md", () => {
+  it("AC-30a: 手順に pnpm install・dev・build・start が書かれている", () => {
+    const names = findPnpmCommands(externalSection("docs/setup.md", "手順")).map((c) => c.name);
+
+    expect(["install", "dev", "build", "start"].filter((n) => !names.includes(n))).toEqual([]);
+  });
+
+  it("AC-30a: テストに pnpm test・test:e2e と bash scripts/verify.sh が書かれている", () => {
+    const body = externalSection("docs/setup.md", "テスト");
+    const names = findPnpmCommands(body).map((c) => c.name);
+
+    expect(["test", "test:e2e"].filter((n) => !names.includes(n))).toEqual([]);
+    expect(missingStrings(body, ["bash scripts/verify.sh"])).toEqual([]);
+  });
+
+  it("AC-30a: 環境変数に GITHUB_TOKEN が任意で、未設定でも動くことが書かれている", () => {
+    const body = externalSection("docs/setup.md", "環境変数");
+
+    expect(missingStrings(body, ["GITHUB_TOKEN", "任意", "未設定"])).toEqual([]);
+  });
+});
+
+describe("AC-30b: docs/structure.md", () => {
+  it("AC-30b: 画面構成とルーティングに / と /repos/[owner]/[repo] が書かれている", () => {
+    const body = externalSection("docs/structure.md", "画面構成とルーティング");
+
+    expect(missingStrings(body, ["`/`", "/repos/[owner]/[repo]"])).toEqual([]);
+  });
+
+  it("AC-30b: ディレクトリ構成に app/ features/ lib/ tests/ e2e/ docs/ が書かれ、components/ は同じ行で未作成と明記されている", () => {
+    const body = externalSection("docs/structure.md", "ディレクトリ構成");
+    const dirs = ["app/", "features/", "lib/", "tests/", "e2e/", "docs/"];
+    const componentsLines = body.split(/\r?\n/).filter((line) => line.includes("`components/`"));
+
+    expect(missingStrings(body, dirs.map((d) => `\`${d}\``))).toEqual([]);
+    expect(componentsLines.filter((line) => line.includes("未作成"))).not.toEqual([]);
+  });
+});
+
+describe("AC-30c: docs/scope.md", () => {
+  it.each(PRODUCTION_ITEMS)("AC-30c: scope.md のプロダクション想定の範囲に「%s」が書かれている", (item) => {
+    const body = externalSection("docs/scope.md", "プロダクション想定の範囲");
+
+    expect(missingStrings(body, [item])).toEqual([]);
+  });
+
+  it("AC-30c: scope.md の対応しなかった事項にアプリのタイトル・仮の定数・対応ブラウザ・ダークモードが書かれている", () => {
+    const body = externalSection("docs/scope.md", "対応しなかった事項");
+
+    expect(missingStrings(body, ["アプリのタイトル", "仮の定数", "対応ブラウザ", "ダークモード"])).toEqual([]);
+  });
+
+  it("AC-30c: scope.md の対応しなかった事項に運営上の項目（評価基準・期限・公開設定）が書かれていない", () => {
+    const body = externalSection("docs/scope.md", "対応しなかった事項");
+
+    expect(findOperationalTerms(body)).toEqual([]);
+  });
+
+  it("AC-30c: scope.md の既知の制約に 1,000 件の上限とレート制限が書かれている", () => {
+    const body = externalSection("docs/scope.md", "既知の制約");
+
+    expect(missingPatterns(body, [/1,?000\s*件/])).toEqual([]);
+    expect(missingStrings(body, ["レート制限"])).toEqual([]);
+  });
+});
+
+describe("外部ファイル共通の検査", () => {
+  it.each(EXTERNAL_DOCS)("AC-30a: $file の pnpm <名前> は pnpm 自体のコマンドを除きすべて scripts にある", (doc) => {
+    const names = findPnpmCommands(readExternal(doc.file))
+      .filter((c) => c.kind !== "exec")
+      .map((c) => c.name)
+      .filter((n) => !PNPM_BUILTIN_COMMANDS.includes(n));
+    const unknown = names.filter((n) => !Object.hasOwn(packageJson.scripts, n));
+
+    expect(names.length).toBeGreaterThanOrEqual(doc.minScripts);
+    expect(unknown).toEqual([]);
+  });
+
+  it.each(EXTERNAL_DOCS)("AC-30f: $file の相対パスが 1 件以上あり、すべて大文字小文字まで一致して実在する", (doc) => {
+    const paths = findRelativePaths(readExternal(doc.file), "docs");
+    const missing = paths.filter((p) => !existsExactCase(root, p));
+
+    expect(paths.length).toBeGreaterThanOrEqual(doc.minPaths);
+    expect(missing).toEqual([]);
+  });
+
+  it.each(EXTERNAL_DOCS)("AC-30g: $file にトークン形式の文字列と GITHUB_TOKEN= に続く値が無い", (doc) => {
+    expect(findSecretLike(readExternal(doc.file))).toEqual([]);
+  });
+});

@@ -393,7 +393,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   - 実装対象（2 ファイル）: `tests/docs/readme.test.ts`、本計画（調査の記録・進捗）
   - 完了条件: 追加テストを含めすべて PASS（既存 60 件は無変更で PASS）。`bash scripts/verify.sh --quick` PASS。調査の記録が A8 にある。不可視文字の走査（node で全文）0 件。
 
-- [ ] **T6: 外部ファイル 3 つの作成（内容の移動）と、その検査**（`docs(readme)`）
+- [x] **T6: 外部ファイル 3 つの作成（内容の移動）と、その検査**（`docs(readme)`）
   - 対応 AC: AC-30a（`docs/setup.md`）、AC-30b（`docs/structure.md`）、AC-30c（`docs/scope.md`）、AC-30f・AC-30g（外部ファイルの分）、AC-30h（3 ファイルの実在と見出し）
   - 先に書くテスト（A2 の表の外部ファイルの行）:
     - `AC-30h: docs/setup.md・docs/structure.md・docs/scope.md が実在する`
@@ -551,3 +551,5 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
   5. 数値の再確認（2026-10-09）: マージ済み PR 18 件（`gh pr list --state merged`）、仕様 20 本、ADR 6 本、agents 5・commands 11・skills 3。
 
 - 2026-10-09（追補 A8）: T5 完了。純粋関数の拡張（`extractHeadings` の対象レベル、`findRelativePaths` の `baseDir`、`findMarkdownLinks`、`countProseChars`。`linksInLine` を共通の下請けとして追加）。RED: 拡張前の挙動（空実装）で新規 19 件のうち 13 件が失敗（いずれも期待値の不一致。残る 6 件は陰性・既定値の確認で、空実装でも通る）。GREEN: 全 79 件 PASS（既存 60 件は削除・変更なし。既存行で変わったのは関数の拡張に必要な 8 行だけ）。実装後に 1 件、テスト側の期待順序の誤り（1 行の中ではリンク、バッククォートの順）を直した。`verify.sh --quick` PASS、不可視文字 0 件。README の現物への検査は変えていない（旧構成のまま緑）。
+
+- 2026-10-09（追補 A8）: T6 完了。RED（Q16）: (1) テストだけを足し、3 ファイルが無い状態で 110 件中 31 件が赤（実在のテスト 3 件は `expected false to be true` の期待値の不一致。残り 28 件は `ENOENT` の読み込み失敗で RED と数えない）。(2) 3 ファイルに `#` と `##` の見出しだけを置いて再実行すると 19 件が失敗（`pnpm` の手順・テスト・環境変数、structure のルーティング・ディレクトリ構成、scope の 8 項目・対応しなかった事項・既知の制約、`pnpm <名前>` と `相対パス 1 件以上` の前提。いずれも内容不足による期待値の不一致）、見出しと実在のテストは緑。GREEN: 現在の README の該当節を、`docs/` 起点の相対リンクに付け替えて外部ファイルへ移した（見出しのレベルとリンクの相対パス以外は変えていない）。110 件すべて PASS。移動の同一性（リポジトリ外のスクリプト、リンク先を除く文の単位）: setup 29 文、structure のルーティング 13 文・ディレクトリ 14 文、scope 41 文で、消えた文 0・増えた文 0。変異 19 件（見出し・スクリプト名の誤記・`未設定`・`bash scripts/verify.sh`・リンク切れ・トークン形式・余計な `##`・`未作成`・詳細ページのパス・項目ごと削除・運営上の語・`1,000 件`・`レート制限`）を検出、陰性 2 件（`GITHUB_TOKEN=` だけ、コードブロック内の `##`）は通過、ファイルを復元。外部ファイルに作者名・メールアドレス・絶対パスは無い（`Users` `@` で Grep）、不可視文字 0 件。README はこのタスクでは変えていない（旧構成の検査も緑のまま）。
