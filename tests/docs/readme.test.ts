@@ -968,30 +968,85 @@ describe("findExternalReaderViolations", () => {
 
 const readme = readFileSync(path.join(root, "README.md"), "utf-8");
 
-const EXPECTED_HEADINGS: Heading[] = [
-  { level: 2, text: "概要" },
-  { level: 2, text: "工夫した点と理由" },
-  { level: 3, text: "Watcher数の取得元" },
-  { level: 3, text: "GitHub APIをサーバー側だけで呼ぶ" },
-  { level: 3, text: "検索条件をURLで持つ" },
-  { level: 3, text: "1,000件の上限の扱い" },
-  { level: 3, text: "取得結果のキャッシュ" },
-  { level: 3, text: "エラーを状態として見せる" },
-  { level: 3, text: "テストの検出力を確かめる" },
-  { level: 2, text: "セットアップ" },
-  { level: 2, text: "構成" },
-  { level: 2, text: "範囲と制約" },
-  { level: 2, text: "AI利用レポート" },
-  { level: 3, text: "AI利用について考慮した点" },
-  { level: 3, text: "使ったツール" },
-  { level: 3, text: "進め方" },
-  { level: 3, text: "人間が判断・修正した点" },
-  { level: 3, text: "AIの出力で注意した点" },
+/** 仕様 4.1 の ## 見出し（8 つ。名前と順） */
+const EXPECTED_H2 = [
+  "概要",
+  "セットアップ",
+  "課題の要件との対応",
+  "工夫した点と理由",
+  "テスト",
+  "構成",
+  "範囲と制約",
+  "AI利用レポート",
 ];
 
+/** 「工夫した点と理由」の ### （7 つ。名前と順） */
+const EXPECTED_DEVICE_H3 = [
+  "Watcher数の取得元",
+  "GitHub APIをサーバー側だけで呼ぶ",
+  "検索条件をURLで持つ",
+  "1,000件の上限の扱い",
+  "取得結果のキャッシュ",
+  "エラーを状態として見せる",
+  "テストの検出力を確かめる",
+];
+
+/** 課題の要件との対応の表の 1 列目（9 項目。名前と順） */
+const REQUIREMENT_ITEMS = [
+  "キーワード検索と一覧",
+  "詳細の表示項目",
+  "詳細はページ（モーダルでない）",
+  "ページネーション",
+  "テストコード",
+  "プロダクション想定",
+  "見やすさ・操作しやすさ",
+  "AI利用レポート",
+  "工夫した点の説明",
+];
+
+/** ## 見出しごとの、その節に属する ### の見出し。AI利用レポート以外の節は ### を持たない */
+function h3sByH2(md: string): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  let current: string | null = null;
+  for (const h of extractHeadings(md, [2, 3])) {
+    if (h.level === 2) {
+      current = h.text;
+      result.set(current, []);
+    } else if (current !== null) {
+      result.get(current)?.push(h.text);
+    }
+  }
+  return result;
+}
+
 describe("README の見出し", () => {
-  it("AC-30a〜AC-30d（前提）: README の ## と ### の見出しが仕様 4.1 の名前と順で過不足なく並ぶ", () => {
-    expect(extractHeadings(readme)).toEqual(EXPECTED_HEADINGS);
+  it("AC-30a〜AC-30d（前提）: README の ## が仕様 4.1 の 8 つの名前と順で完全一致する", () => {
+    expect(extractHeadings(readme, [2]).map((h) => h.text)).toEqual(EXPECTED_H2);
+  });
+
+  it("AC-30b（前提）: 「工夫した点と理由」の ### が仕様 4.1 の 7 つの名前と順で完全一致する", () => {
+    expect(h3sByH2(readme).get("工夫した点と理由")).toEqual(EXPECTED_DEVICE_H3);
+  });
+
+  it("AC-30a〜AC-30d（前提）: AI利用レポート以外の ## 節に ### が無い", () => {
+    const withH3 = [...h3sByH2(readme)]
+      .filter(([h2, h3s]) => h2 !== "AI利用レポート" && h2 !== "工夫した点と理由" && h3s.length > 0)
+      .map(([h2]) => h2);
+
+    expect(withH3).toEqual([]);
+  });
+});
+
+describe("AC-30l: README の目次", () => {
+  it("AC-30l: 目次の項目が 8 つの ## の名前と順で完全一致する", () => {
+    expect(extractToc(readme).map((i) => i.text)).toEqual(EXPECTED_H2);
+  });
+
+  it("AC-30l: 目次のすべての href が # で始まる", () => {
+    const toc = extractToc(readme);
+
+    expect(toc.length).toBeGreaterThan(0);
+    expect(toc.filter((i) => !i.href.startsWith("#"))).toEqual([]);
   });
 });
 
@@ -1099,7 +1154,8 @@ describe("AC-30h・AC-30i: README のリンクと分量", () => {
     expect(["docs/setup.md", "docs/structure.md", "docs/scope.md"].filter((l) => !links.includes(l))).toEqual([]);
   });
 
-  it.each(["セットアップ", "構成", "範囲と制約"])(
+  // AI利用レポートは T13 で加える
+  it.each(["概要", "セットアップ", "課題の要件との対応", "テスト", "構成", "範囲と制約"])(
     "AC-30i: 「工夫した点と理由」の本文は「%s」の本文より長い",
     (heading) => {
       const devices = countProseChars(readmeSection("工夫した点と理由"));
@@ -1108,6 +1164,57 @@ describe("AC-30h・AC-30i: README のリンクと分量", () => {
       expect(devices).toBeGreaterThan(other);
     },
   );
+});
+
+describe("AC-30m: README の課題の要件との対応", () => {
+  it("AC-30m: 表があり、ヘッダーに「対応」の列があり、1 列目が 9 項目と順で完全一致する", () => {
+    const table = parseMarkdownTable(readmeSection("課題の要件との対応"));
+
+    expect(table).not.toBeNull();
+    expect(table?.header).toContain("対応");
+    expect(table?.rows.map((r) => r[0])).toEqual(REQUIREMENT_ITEMS);
+  });
+
+  it.each(REQUIREMENT_ITEMS)("AC-30m: 「%s」の行の「対応」の列に参照が 1 件以上ある", (item) => {
+    const table = parseMarkdownTable(readmeSection("課題の要件との対応"));
+    const column = table?.header.indexOf("対応") ?? -1;
+    const row = table?.rows.find((r) => r[0] === item);
+
+    expect(column).toBeGreaterThanOrEqual(0);
+    expect(row).toBeDefined();
+    expect(findCellReferences(row?.[column] ?? "").length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("AC-30n: README のテスト", () => {
+  it("AC-30n: テストに Vitest・Testing Library・Playwright・構造検査・アクセシビリティが書かれている", () => {
+    const body = readmeSection("テスト");
+
+    expect(missingStrings(body, ["Vitest", "Testing Library", "Playwright", "構造検査", "アクセシビリティ"])).toEqual([]);
+  });
+
+  it("AC-30n: テストに pnpm test と pnpm test:e2e と bash scripts/verify.sh が書かれている", () => {
+    const body = readmeSection("テスト");
+    const names = findPnpmCommands(body).map((c) => c.name);
+
+    expect(["test", "test:e2e"].filter((n) => !names.includes(n))).toEqual([]);
+    expect(missingStrings(body, ["bash scripts/verify.sh"])).toEqual([]);
+  });
+
+  it("AC-30n: テストから docs/setup.md へリンクしている", () => {
+    expect(findMarkdownLinks(readmeSection("テスト"))).toContain("docs/setup.md");
+  });
+});
+
+describe("AC-30k: README の外部の読者向けの書き方", () => {
+  it("AC-30k: AI利用レポートの節を除く範囲に AC-n・この README・Draft PR・マージ済みが無い", () => {
+    // AI利用レポートの節は T13 で検査する。見出し行と本文を取り除いた残りを対象にする
+    const lines = splitLines(readme).join("\n");
+    const ai = getSection(lines, "AI利用レポート");
+    const target = ai === null ? lines : lines.replace(`## AI利用レポート\n${ai}`, "");
+
+    expect(findExternalReaderViolations(target)).toEqual([]);
+  });
 });
 
 // ---- README の後半（範囲と制約・AI利用レポート）のキーワード検査 ----
