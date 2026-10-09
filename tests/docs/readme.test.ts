@@ -543,6 +543,7 @@ const EXPECTED_HEADINGS: Heading[] = [
   { level: 3, text: "対応しなかった事項" },
   { level: 3, text: "既知の制約" },
   { level: 2, text: "AI利用レポート" },
+  { level: 3, text: "AI利用について考慮した点" },
   { level: 3, text: "使ったツール" },
   { level: 3, text: "進め方" },
   { level: 3, text: "人間が判断・修正した点" },

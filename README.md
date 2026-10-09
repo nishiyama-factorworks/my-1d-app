@@ -113,9 +113,14 @@ pnpm test:e2e
 
 ## AI利用レポート
 
+### AI利用について考慮した点
+- 基本的にAIに作業させることに注力すること。
+- タスクを細かく細分化し、機能を積み上げることで完成に近づけること。
+- まずはGithub＋AIをフル活用したワークフローを作ること。
+
 ### 使ったツール
 
-- **Claude Code**（Anthropic の CLI）で、仕様の作成から実装・レビュー・PR の作成までを進めました。コミットの `Co-Authored-By` には、Claude Opus 5.5 と Claude Sonnet 5.5 の 2 つのモデル名が残っています。
+- **Claude Code**（Anthropic の CLI）で、仕様の作成から実装・レビュー・PR の作成までを進めました。
 - Claude Code のサブエージェントを、役割ごとに使い分けました（`.claude/agents/`）: `planner`（計画）、`test-writer`（失敗するテスト）、`implementer`（実装）、`reviewer`（レビュー）、`security-reviewer`（セキュリティの点検）。
 
 ### 進め方
