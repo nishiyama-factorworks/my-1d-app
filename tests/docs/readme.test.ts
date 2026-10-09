@@ -24,13 +24,13 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const root = path.resolve(import.meta.dirname, "../..");
 
-type Heading = { level: 2 | 3; text: string };
+type Heading = { level: 1 | 2 | 3; text: string };
 type SecretHit = { line: number; text: string };
 
 // ---- 判定・解析（純粋関数） ----
 
-/** `##` と `###` の見出しを出現順に返す。フェンス内は除く。`####` 以下と `#` は返さない */
-function extractHeadings(md: string): Heading[] {
+/** levels（既定は `##` と `###`）のレベルの見出しを出現順に返す。フェンス内と `####` 以下は返さない */
+function extractHeadings(md: string, levels: ReadonlyArray<1 | 2 | 3> = [2, 3]): Heading[] {
   const headings: Heading[] = [];
   let fence: { char: string; length: number } | null = null;
   for (const line of splitLines(md)) {
@@ -50,24 +50,24 @@ function extractHeadings(md: string): Heading[] {
       }
       continue;
     }
-    const match = /^(#{2,3})[ \t]+(.+?)[ \t]*$/.exec(line);
+    const match = /^(#{1,3})[ \t]+(.+?)[ \t]*$/.exec(line);
     if (match !== null) {
-      headings.push({ level: match[1].length === 2 ? 2 : 3, text: match[2] });
+      const level = match[1].length === 1 ? 1 : match[1].length === 2 ? 2 : 3;
+      if (levels.includes(level)) headings.push({ level, text: match[2] });
     }
   }
   return headings;
 }
 
-/** README 内の相対パス（リンクの target と、バッククォート内のリポジトリ内パス）を重複なしで返す */
-function findRelativePaths(md: string): string[] {
+/**
+ * 相対パス（リンクの target と、バッククォート内のリポジトリ内パス）を重複なしで返す。
+ * リンクの target は baseDir 起点で解決してルート起点に直す。バッククォート内は常にルート起点
+ */
+function findRelativePaths(md: string, baseDir = ""): string[] {
   const found: string[] = [];
   for (const line of linesOutsideFences(md)) {
     const uncreated = line.includes("未作成");
-    const candidates: string[] = [];
-    for (const m of line.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
-      const target = linkTargetToPath(m[1]);
-      if (target !== null) candidates.push(target);
-    }
+    const candidates: string[] = linksInLine(line, baseDir);
     for (const m of line.matchAll(/`([^`\n]+)`/g)) {
       if (isRepoPathInCode(m[1])) candidates.push(m[1]);
     }
@@ -77,6 +77,26 @@ function findRelativePaths(md: string): string[] {
     }
   }
   return [...new Set(found)];
+}
+
+/** フェンスの外の Markdown リンクの target を、baseDir からの相対として解決しルート起点で返す */
+function findMarkdownLinks(md: string, baseDir = ""): string[] {
+  return linesOutsideFences(md).flatMap((line) => linksInLine(line, baseDir));
+}
+
+/** 1 行の Markdown リンクの target を、baseDir 起点で解決してルート起点にして返す */
+function linksInLine(line: string, baseDir: string): string[] {
+  const links: string[] = [];
+  for (const m of line.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+    const target = linkTargetToPath(m[1]);
+    if (target !== null) links.push(path.posix.join(baseDir, target));
+  }
+  return links;
+}
+
+/** フェンスの外の行の、空白類を除く文字数（コードポイント数） */
+function countProseChars(body: string): number {
+  return [...linesOutsideFences(body).join("").replace(/\s/g, "")].length;
 }
 
 /** rel の各セグメントを大文字小文字まで含めて readdir の名前と照合し、実在するかを返す */
@@ -464,6 +484,143 @@ describe("findRelativePaths", () => {
 
   it("AC-30f（パス抽出）: 「未作成」と書いた行でも components/ 以外のパスは返す", () => {
     expect(findRelativePaths("`components/` は未作成。`lib/` はある")).toEqual(["lib/"]);
+  });
+});
+
+describe("extractHeadings（対象レベルの指定）", () => {
+  it("AC-30h（見出し判定）: levels が [1, 2] のとき # と ## だけを返し、### 以下は返さない", () => {
+    const md = ["# t", "## a", "### b", "#### c", "# u"].join("\n");
+
+    expect(extractHeadings(md, [1, 2])).toEqual([
+      { level: 1, text: "t" },
+      { level: 2, text: "a" },
+      { level: 1, text: "u" },
+    ]);
+  });
+
+  it("AC-30h（見出し判定）: levels が [1, 2] でもフェンスの中の # 行は返さない", () => {
+    const md = ["# a", "```bash", "# x", "## y", "```", "~~~", "# z", "~~~", "## b"].join("\n");
+
+    expect(extractHeadings(md, [1, 2])).toEqual([
+      { level: 1, text: "a" },
+      { level: 2, text: "b" },
+    ]);
+  });
+
+  it("AC-30h（見出し判定）: levels が [1] のとき # だけを返す", () => {
+    expect(extractHeadings("# a\n## b\n### c", [1])).toEqual([{ level: 1, text: "a" }]);
+  });
+
+  it("AC-30h（見出し判定）: levels を省略すると従来どおり ## と ### だけを返す", () => {
+    expect(extractHeadings("# a\n## b\n### c")).toEqual([
+      { level: 2, text: "b" },
+      { level: 3, text: "c" },
+    ]);
+  });
+});
+
+describe("findRelativePaths（baseDir）", () => {
+  it("AC-30f（パス抽出）: baseDir が docs のとき、リンクの target を docs 起点で解決しルート起点で返す", () => {
+    const md = "[a](specs/0001-a.md) [b](../README.md) [c](./adr/) [d](adr/0005-b.md#decision)";
+
+    expect(findRelativePaths(md, "docs")).toEqual([
+      "docs/specs/0001-a.md",
+      "README.md",
+      "docs/adr/",
+      "docs/adr/0005-b.md",
+    ]);
+  });
+
+  it("AC-30f（パス抽出）: baseDir が docs のとき、ルートの外に出るリンクは .. を含む形で返し、実在判定は不合格になる", () => {
+    const dir = makeTempDir();
+    touch(dir, "x.md");
+
+    const paths = findRelativePaths("[c](../../x.md)", "docs");
+
+    expect(paths).toHaveLength(1);
+    expect(paths[0].split("/")).toContain("..");
+    expect(existsExactCase(dir, paths[0])).toBe(false);
+  });
+
+  it("AC-30f（パス抽出）: baseDir が docs でも、バッククォート内のパスはルート起点のまま返す", () => {
+    const md = "`lib/app-config.ts` と `README.md` と [a](setup.md)";
+
+    // 1 行の中ではリンク、バッククォートの順で返る
+    expect(findRelativePaths(md, "docs")).toEqual(["docs/setup.md", "lib/app-config.ts", "README.md"]);
+  });
+
+  it("AC-30f（パス抽出）: baseDir が docs でも、外部 URL・アンカー・フェンス内のリンクは返さない", () => {
+    const md = ["[a](https://example.com/x)", "[b](#sec)", "```", "[c](x.md)", "```"].join("\n");
+
+    expect(findRelativePaths(md, "docs")).toEqual([]);
+  });
+
+  it("AC-30f（パス抽出）: baseDir が docs のとき、「未作成」の行の components/ へのリンクは返さない", () => {
+    expect(findRelativePaths("[c](../components/) は未作成", "docs")).toEqual([]);
+  });
+});
+
+describe("findMarkdownLinks", () => {
+  it("AC-30h（リンク抽出）: Markdown リンクの target を出現順に返し、# の断片を落とす", () => {
+    const md = "[仕様](docs/specs/0001-a.md) と [ADR](docs/adr/0005-b.md#decision)";
+
+    expect(findMarkdownLinks(md)).toEqual(["docs/specs/0001-a.md", "docs/adr/0005-b.md"]);
+  });
+
+  it("AC-30h（リンク抽出）: baseDir が docs のとき、target を docs 起点で解決しルート起点で返す", () => {
+    const md = "[a](specs/0001-a.md) [b](../README.md#x)";
+
+    expect(findMarkdownLinks(md, "docs")).toEqual(["docs/specs/0001-a.md", "README.md"]);
+  });
+
+  it("AC-30h（リンク抽出）: バッククォート内や地の文の docs/setup.md はリンクとして数えない", () => {
+    const md = "`docs/setup.md` と docs/setup.md と `README.md`";
+
+    expect(findMarkdownLinks(md)).toEqual([]);
+  });
+
+  it("AC-30h（リンク抽出）: 外部 URL・mailto・ページ内アンカー・絶対パス・フェンス内のリンクは返さない", () => {
+    const md = [
+      "[a](https://example.com/x)",
+      "[b](mailto:someone@example.com)",
+      "[c](#section)",
+      "[d](/repos/foo)",
+      "```",
+      "[e](docs/setup.md)",
+      "```",
+    ].join("\n");
+
+    expect(findMarkdownLinks(md)).toEqual([]);
+  });
+});
+
+describe("countProseChars", () => {
+  it("AC-30i（文字数）: 空白・タブ・改行・全角空白を数えない", () => {
+    expect(countProseChars("a b\tc\n d　e\n\n")).toBe(5);
+  });
+
+  it("AC-30i（文字数）: ``` と ~~~ のフェンスの中（記号の行を含む）を数えない", () => {
+    expect(countProseChars("ab\n```bash\ncdef\n```\ngh\n~~~\nijk\n~~~\nl")).toBe(5);
+  });
+
+  it("AC-30i（文字数）: CRLF でも LF と同じ数になる", () => {
+    const lf = "あい\n```\nxyz\n```\nうえ\n";
+
+    expect(countProseChars(lf.replace(/\n/g, "\r\n"))).toBe(countProseChars(lf));
+    expect(countProseChars(lf)).toBe(4);
+  });
+
+  it("AC-30i（文字数）: 見出し行の文字（# の記号を含む）を数える", () => {
+    expect(countProseChars("## 見出し\n本文")).toBe(7);
+  });
+
+  it("AC-30i（文字数）: コードポイント数で数える（サロゲートペアは 1 文字）", () => {
+    expect(countProseChars("\u{20BB7}a")).toBe(2);
+  });
+
+  it("AC-30i（文字数）: 空文字列とフェンスだけの文字列は 0", () => {
+    expect(countProseChars("")).toBe(0);
+    expect(countProseChars("```\nabc\n```")).toBe(0);
   });
 });
 

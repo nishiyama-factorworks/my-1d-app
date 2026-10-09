@@ -377,7 +377,7 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 
 > 分け方の考え方（Q14）: RED のテストはコミットできない（`verify.sh --quick` が通らない）ため、各タスクは「テストを足して作業ツリーで RED を確認 → 文書を書いて GREEN」を 1 コミットにする。外部ファイルの作成（T6）と README の再構成（T7）を分けると、T6 のコミット時点では README と外部ファイルに同じ内容が一時的に重複するが、どのコミットでもテストは緑に保たれ、各コミットが 5 ファイル以内に収まる（Q15）。
 
-- [ ] **T5: 新しい 2 小節と「代わりの案」の調査、純粋関数の拡張**（`test(docs)`）
+- [x] **T5: 新しい 2 小節と「代わりの案」の調査、純粋関数の拡張**（`test(docs)`）
   - 対応 AC: AC-30f・AC-30h・AC-30i の判定関数（AC-30a〜AC-30d の見出しの前提を含む）
   - 調査（A8 の「調査の記録（追補）」に、出典のパスと番号を箇条書きで残す。推測で埋めない。確認できないものは「未確認」）:
     1. 「エラーを状態として見せる」: 仕様 0010 の 1〜4 節・受け入れ条件・未決事項（`error.tsx` に本番では `message` が届かないため、種別ごとの表示をページで描画する理由）、`docs/architecture.md` の 5 節（状態表示、詳細ページのエラー、`GitHubApiError` の種別と固定文言）と 7 節（`role="status"` / `role="alert"`）、計画 0010 の Q と別案。
@@ -542,3 +542,12 @@ Status: in-progress              <!-- draft | in-progress | done  ※ SessionSta
 - 2026-10-09: 追補を作成（draft）。人間の承認（特に Q14〜Q17・Q19）を得てから T5 に入る。計画作成時の確認: `docs/setup.md` `docs/structure.md` `docs/scope.md` は未作成（Glob）。`tests/docs/readme.test.ts` は 60 件で、`EXPECTED_HEADINGS` は旧構成の 16 個（`##` 5・`###` 11）。`tests/` の他のテストは `docs/` 直下の新しいファイルの影響を受けない（Grep で確認）。`docs/` は `.prettierignore` の対象。`docs/architecture.md` の 5 節に状態表示（0010）、7 節に `role="status"` / `role="alert"` の記述があること、仕様 0010 が存在すること、「変異」の記録がある計画（0006〜0014・0016〜0020）を確認した（内容の精読と出典の記録は T5 で行う）。
 
 - 2026-10-09（追補 A8）: 人間が追補（T5〜T9、Q14〜Q25）を推奨どおりで承認。Q17（リンクの基準）はその解釈でよいと確定、Q19（人間が追記した「考慮した点」の表記）は `Github` を `GitHub` に、全角の `＋` を `+` に直す（内容は変えない）と確定。Status: in-progress。T5 から着手。
+
+- 2026-10-09（追補 A8）: T5 の調査の記録（追補）。出典のパスと番号。確認できないものは「未確認」。
+  1. 「エラーを状態として見せる」: 仕様 0010 の 2 節（本番の Next.js は Server Component で投げた例外のメッセージを `error.tsx` に渡さず、固定の文言と `digest` だけになる。出典は仕様 0010 が引く `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/error.md`）。そのため種別ごとの表示（`RATE_LIMIT` `NOT_FOUND` `VALIDATION` `UPSTREAM` `NETWORK`）はページで `GitHubApiError` を受け止めて `ApiErrorView` を描画し、想定外の例外だけを `app/error.tsx` が受ける。`docs/architecture.md` の 5 節（`GitHubApiError` のメッセージは種別ごとの固定文言で、トークン・URL・レスポンス本文を含めない。エラー表示と 404 はストリーミングのため HTTP 200）と 7 節（読み込み中・0 件・範囲外は `role="status"`、エラーは `role="alert"`）。計画 0010 の Q1・Q3・Q6・Q7（トップは `Suspense` の fallback、共用部品は `features/state-views/`、`error.tsx` は 1 つ・`not-found.tsx` は詳細だけ、再試行ボタンは `role="alert"` の内側）。「代わりの案」: `error.tsx` だけで受ける案は、メッセージが届かず種別を出し分けられないため採らなかった（仕様 0010 の 2 節）。
+  2. 「テストの検出力を確かめる」: 計画の進捗メモにある変異の実績（全計画の合計は数え方が揃っていないため書かない。Q23）。計画 0016（14 個）、0017（12 個）、0019（8 件）、0020（8 件）、0013（Vitest 14 件・E2E 7 件。うち初回に 2 件を見逃し、認証情報の行を足して全件検出）、本計画（30 件。既知の限界 1 件）。見逃しの例は計画 0013 の T2 と本計画の T3。
+  3. 既存 5 小節の「代わりの案・トレードオフ」: Watcher 数は仕様 0001 の 7 節（`watchers_count` は Star 数と同値）、サーバー側の呼び出しは仕様 0003 と architecture.md 5 節（`server-only`）、URL での状態保持は仕様 0009、1,000 件は仕様 0007 と architecture.md 5 節、キャッシュは ADR 0005（案 A〜E の検討、実機確認）。ADR 0005 は「検討した選択肢」を持つ（案の記録あり）。他の小節は仕様の未決事項・計画の Q の別案を出典にする（トレードオフのみ）。
+  4. 「AI利用について考慮した点」の実例の候補: 細分化 — 計画のタスク分割（T1〜T9 など）、1 Issue = 1 PR（PR #34 〜 #38）。GitHub + AI のワークフロー — Issue 起点、Draft PR、人間の承認ゲート（push と PR 作成）、`scripts/ready-issues.mjs`（ADR 0004）、本 PR #39 で人間が Draft PR を見て仕様を改訂した流れ。AI に作業させる — サブエージェントの役割分担（`.claude/agents/` の 5 つ）、ハーネスの自動ゲート。
+  5. 数値の再確認（2026-10-09）: マージ済み PR 18 件（`gh pr list --state merged`）、仕様 20 本、ADR 6 本、agents 5・commands 11・skills 3。
+
+- 2026-10-09（追補 A8）: T5 完了。純粋関数の拡張（`extractHeadings` の対象レベル、`findRelativePaths` の `baseDir`、`findMarkdownLinks`、`countProseChars`。`linksInLine` を共通の下請けとして追加）。RED: 拡張前の挙動（空実装）で新規 19 件のうち 13 件が失敗（いずれも期待値の不一致。残る 6 件は陰性・既定値の確認で、空実装でも通る）。GREEN: 全 79 件 PASS（既存 60 件は削除・変更なし。既存行で変わったのは関数の拡張に必要な 8 行だけ）。実装後に 1 件、テスト側の期待順序の誤り（1 行の中ではリンク、バッククォートの順）を直した。`verify.sh --quick` PASS、不可視文字 0 件。README の現物への検査は変えていない（旧構成のまま緑）。
