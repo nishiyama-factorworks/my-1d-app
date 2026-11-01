@@ -42,7 +42,7 @@ jobs:
       # npm / yarn に変える場合は、この step を削除し setup-node の cache を npm / yarn に変更する。
       - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22        # プロジェクトの Node バージョンに合わせる（.nvmrc を使うなら node-version-file: .nvmrc）
           cache: pnpm
@@ -62,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
