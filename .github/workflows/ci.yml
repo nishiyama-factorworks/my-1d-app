@@ -40,7 +40,7 @@ jobs:
 
       # pnpm を使う場合。package.json に "packageManager": "pnpm@x.y.z" を設定しておくこと。
       # npm / yarn に変える場合は、この step を削除し setup-node の cache を npm / yarn に変更する。
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
